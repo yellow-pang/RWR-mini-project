@@ -1,25 +1,98 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { useCourse, MOCK_COURSE } from "../context/CourseContext";
+import { fetchCourseById } from "../api/courses";
+import {
+  addFavorite,
+  fetchFavorites,
+  removeFavorite,
+} from "../api/favorites";
+import { useCourse } from "../context/CourseContext";
+import { getMoodLabel, getTypeLabel } from "../utils/courseDisplay";
+import { getUserId } from "../utils/userId";
 import CourseInfo from "../components/CourseInfo";
 
 function DetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentCourse } = useCourse();
-
-  // Prefer navigation state, then context, then Step 04 mock data.
-  const course = location.state?.course ?? currentCourse ?? {
-    ...MOCK_COURSE,
-    id: id ?? MOCK_COURSE.id,
-  };
-
+  const { currentCourse, setCurrentCourse } = useCourse();
+  const [course, setCourse] = useState(
+    location.state?.course?.description ? location.state.course : currentCourse,
+  );
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isLoading, setIsLoading] = useState(!course);
+  const [message, setMessage] = useState("");
 
-  function handleFavoriteToggle() {
-    // Step 05 will persist this through the favorites API.
-    setIsFavorite((prev) => !prev);
+  useEffect(() => {
+    async function loadCourse() {
+      try {
+        setIsLoading(true);
+        setMessage("");
+        const response = await fetchCourseById(id);
+        setCourse(response.data);
+        setCurrentCourse(response.data);
+      } catch (err) {
+        setMessage(err.message || "코스 상세 정보를 불러오지 못했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (!course?.description) {
+      loadCourse();
+    }
+  }, [course?.description, id, setCurrentCourse]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    async function loadFavoriteState() {
+      try {
+        const response = await fetchFavorites(getUserId());
+        setIsFavorite(response.data.some((item) => item.courseId === id));
+      } catch {
+        setIsFavorite(false);
+      }
+    }
+
+    loadFavoriteState();
+  }, [id]);
+
+  async function handleFavoriteToggle() {
+    if (!id) return;
+
+    try {
+      setMessage("");
+      const userId = getUserId();
+      if (isFavorite) {
+        await removeFavorite(userId, id);
+        setIsFavorite(false);
+      } else {
+        await addFavorite(userId, id);
+        setIsFavorite(true);
+      }
+    } catch (err) {
+      setMessage(err.message || "즐겨찾기 상태를 변경하지 못했습니다.");
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="page detail-page">
+        <p className="page-desc">코스 정보를 불러오는 중입니다...</p>
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="page detail-page">
+        <p className="form-error">{message || "코스를 찾을 수 없습니다."}</p>
+        <button className="btn-primary" onClick={() => navigate("/")}>
+          코스 추천받기
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -37,14 +110,18 @@ function DetailPage() {
         </button>
       </div>
 
+      {message && <p className="form-error">{message}</p>}
+
       <div className="detail-title-area">
         <h1 className="page-title">{course.title}</h1>
         <div className="course-meta detail-meta">
           <span className="course-badge">{course.distance}km</span>
           <span className="course-badge">{course.time}분</span>
-          <span className="course-badge">{course.type}</span>
+          <span className="course-badge">{getTypeLabel(course.type)}</span>
           {course.mood && (
-            <span className="course-badge mood">{course.mood}</span>
+            <span className="course-badge mood">
+              {getMoodLabel(course.mood)}
+            </span>
           )}
         </div>
       </div>

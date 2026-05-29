@@ -79,6 +79,17 @@ a {
   margin-bottom: 24px;
 }
 
+.form-error {
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  background-color: #fff5f5;
+  color: #c62828;
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid #ffcdd2;
+}
+
 /* ========================================
    공통 버튼
    ======================================== */
