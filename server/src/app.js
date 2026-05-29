@@ -1,10 +1,14 @@
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 
 const app = express();
 
+// ── 보안 헤더 ─────────────────────────────────────────────
+app.use(helmet());
+
 // ── 미들웨어 ──────────────────────────────────────────────
-app.use(express.json());
+app.use(express.json({ limit: "4kb" }));
 
 app.use(
   cors({
@@ -23,13 +27,13 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// ── TODO: 라우터 등록 (Step 3~4에서 추가) ────────────────
-// const coursesRouter = require('./routes/courses');
-// const favoritesRouter = require('./routes/favorites');
-// const historyRouter = require('./routes/history');
-// app.use('/api/courses', coursesRouter);
-// app.use('/api/favorites', favoritesRouter);
-// app.use('/api/history', historyRouter);
+// ── 라우터 등록 ──────────────────────────────────────────
+const coursesRouter = require("./routes/courses");
+const favoritesRouter = require("./routes/favorites");
+const historyRouter = require("./routes/history");
+app.use("/api/courses", coursesRouter);
+app.use("/api/favorites", favoritesRouter);
+app.use("/api/history", historyRouter);
 
 // ── 404 핸들러 ───────────────────────────────────────────
 app.use((req, res) => {
