@@ -6,18 +6,18 @@
 /* CSS 변수 (라이트 모드) */
 :root {
   /* 컬러 */
-  --color-primary:      #4CAF50;
-  --color-primary-dark: #388E3C;
-  --color-bg:           #F5F5F5;
-  --color-card:         #FFFFFF;
-  --color-text-main:    #212121;
-  --color-text-sub:     #757575;
-  --color-danger:       #FF5252;
-  --color-favorite:     #F44336;
-  --color-border:       #E0E0E0;
+  --color-primary: #4caf50;
+  --color-primary-dark: #388e3c;
+  --color-bg: #f5f5f5;
+  --color-card: #ffffff;
+  --color-text-main: #212121;
+  --color-text-sub: #757575;
+  --color-danger: #ff5252;
+  --color-favorite: #f44336;
+  --color-border: #e0e0e0;
 
   /* 타이포그래피 */
-  font-family: system-ui, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+  font-family: system-ui, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
   font-size: 16px;
   line-height: 1.5;
   color: var(--color-text-main);
@@ -101,8 +101,7 @@ a {
 }
 
 .btn-primary:disabled {
-  background-color: var(--color-border);
-  color: var(--color-text-sub);
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -163,7 +162,10 @@ a {
   font-size: 14px;
   font-weight: 500;
   min-height: 44px;
-  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background-color 0.15s;
 }
 
 .chip:hover {
@@ -187,20 +189,6 @@ a {
   text-align: center;
   color: var(--color-text-sub);
   margin-bottom: 20px;
-}
-
-.result-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.result-actions .btn-secondary {
-  flex: 1;
-}
-
-.result-actions .btn-primary {
-  flex: 1;
 }
 
 /* ========================================
@@ -237,14 +225,106 @@ a {
 }
 
 /* ========================================
+   홈 화면
+   ======================================== */
+.btn-reset {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  background: none;
+  border: none;
+  color: var(--color-text-sub);
+  font-size: 13px;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.btn-reset:hover {
+  color: var(--color-danger);
+}
+
+/* ========================================
+   결과 화면
+   ======================================== */
+.result-header {
+  margin-bottom: 16px;
+}
+
+.result-header .btn-back {
+  margin-bottom: 10px;
+}
+
+.condition-badges {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.condition-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background-color: #e8f5e9;
+  color: var(--color-primary-dark);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.btn-recommend-again {
+  margin-top: 4px;
+}
+
+/* ========================================
+   상세 화면
+   ======================================== */
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.detail-title-area {
+  margin-bottom: 20px;
+}
+
+.detail-meta {
+  margin-top: 10px;
+}
+
+/* ========================================
+   EmptyState 추가 스타일
+   ======================================== */
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.empty-state-btn {
+  margin-top: 20px;
+  max-width: 200px;
+}
+
+/* ========================================
+   카드 목록
+   ======================================== */
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ========================================
    반응형 — Tablet (768px+)
    ======================================== */
 @media (min-width: 768px) {
   .chip-group {
     gap: 10px;
-  }
-
-  .result-actions {
-    gap: 16px;
   }
 }

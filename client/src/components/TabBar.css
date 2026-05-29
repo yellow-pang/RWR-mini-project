@@ -16,6 +16,7 @@
 }
 
 .tab-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -32,6 +33,17 @@
 
 .tab-item.active {
   color: var(--color-primary);
+}
+
+.tab-item.active::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 25%;
+  right: 25%;
+  height: 3px;
+  background-color: var(--color-primary);
+  border-radius: 0 0 3px 3px;
 }
 
 .tab-icon {

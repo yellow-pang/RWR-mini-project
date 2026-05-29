@@ -5,6 +5,15 @@ import "./Layout.css";
 function Layout() {
   return (
     <div className="layout">
+      <header className="app-header">
+        <span className="app-header-logo" aria-hidden="true">
+          🏃
+        </span>
+        <div className="app-header-text">
+          <span className="app-header-title">RWR</span>
+          <span className="app-header-sub">Run Walk Random</span>
+        </div>
+      </header>
       <main className="layout-main">
         <Outlet />
       </main>
