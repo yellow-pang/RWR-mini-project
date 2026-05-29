@@ -1,5 +1,6 @@
 # PR #05. 프론트엔드-백엔드 연동
 
+> 관련 작업 계획서: [docs/plans/plan-05-api-integration.md](../plans/plan-05-api-integration.md)  
 > 관련 Step 문서: [docs/steps/step-05-api-integration.md](../steps/step-05-api-integration.md)
 
 ---

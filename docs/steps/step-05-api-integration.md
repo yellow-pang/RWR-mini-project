@@ -2,6 +2,7 @@
 
 > 작성일: 2026.05.29  
 > 브랜치: `feat/step-05-api-integration`  
+> 작업 계획서: [docs/plans/plan-05-api-integration.md](../plans/plan-05-api-integration.md)  
 > 관련 PR 문서: [docs/pr/pr-05-api-integration.md](../pr/pr-05-api-integration.md)
 
 ---
