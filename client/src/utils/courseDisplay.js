@@ -12,9 +12,9 @@ const MOOD_LABELS = {
 };
 
 export function getTypeLabel(type) {
-  return TYPE_LABELS[type] || type;
+  return TYPE_LABELS[type] || type || "";
 }
 
 export function getMoodLabel(mood) {
-  return MOOD_LABELS[mood] || mood;
+  return MOOD_LABELS[mood] || mood || "";
 }
