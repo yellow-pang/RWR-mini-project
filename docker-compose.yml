@@ -1,0 +1,62 @@
+version: "3.9"
+
+# ── 운영 환경 Docker Compose ─────────────────────────────────────────────────
+# 서비스 구성: nginx (SPA + /api 프록시) + server (Express) + db (PostgreSQL)
+# 실행: docker-compose up -d --build
+
+services:
+  nginx:
+    build:
+      context: . # 루트를 context로 설정 (nginx/nginx.conf 접근 필요)
+      dockerfile: ./client/Dockerfile
+      args:
+        VITE_KAKAO_MAP_KEY: ${VITE_KAKAO_MAP_KEY:-}
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - rwr-network
+    restart: unless-stopped
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      CORS_ORIGIN: http://localhost
+      DATABASE_URL: postgresql://rwr_user:rwr_password@db:5432/rwr_db
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - rwr-network
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rwr_user
+      POSTGRES_PASSWORD: rwr_password
+      POSTGRES_DB: rwr_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./server/src/db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rwr_user -d rwr_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rwr-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  rwr-network:
+    driver: bridge
