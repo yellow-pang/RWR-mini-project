@@ -1,10 +1,14 @@
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 
 const app = express();
 
+// ── 보안 헤더 ─────────────────────────────────────────────
+app.use(helmet());
+
 // ── 미들웨어 ──────────────────────────────────────────────
-app.use(express.json());
+app.use(express.json({ limit: "4kb" }));
 
 app.use(
   cors({

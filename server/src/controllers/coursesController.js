@@ -12,8 +12,8 @@ exports.getRandom = async (req, res, next) => {
   try {
     const { distance, time, type, exclude } = req.query;
     const course = await coursesService.findRandom({
-      distance: Number(distance),
-      time: Number(time),
+      distance,
+      time,
       type,
       exclude,
     });

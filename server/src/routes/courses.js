@@ -25,9 +25,9 @@ router.get(
       .isIn([15, 30, 60])
       .withMessage("time은 15, 30, 60 중 하나여야 합니다."),
     query("type")
+      .trim()
       .notEmpty()
       .withMessage("type은 필수입니다.")
-      .trim()
       .isIn(["걷기", "조깅", "러닝"])
       .withMessage("type은 걷기, 조깅, 러닝 중 하나여야 합니다."),
     query("exclude")

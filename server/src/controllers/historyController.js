@@ -11,10 +11,7 @@ exports.getList = async (req, res, next) => {
 
   try {
     const { userId, limit } = req.query;
-    const data = await historyService.findByUser(
-      userId,
-      limit ? Number(limit) : 10,
-    );
+    const data = await historyService.findByUser(userId, limit);
     res.json({ success: true, data });
   } catch (err) {
     next(err);

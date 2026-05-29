@@ -5,21 +5,27 @@ const db = require("../db");
  * @param {{ distance: number, time: number, type: string, exclude?: string }} params
  * @returns {Promise<Object|null>}
  */
+const COURSE_COLUMNS = `
+  id, title, distance, time, type, mood,
+  description, reason, caution, tip
+`;
+
 exports.findRandom = async ({ distance, time, type, exclude }) => {
   const values = [distance, time, type];
-  let query = `
-    SELECT * FROM courses
+  let sql = `
+    SELECT ${COURSE_COLUMNS}
+    FROM courses
     WHERE distance = $1 AND time = $2 AND type = $3
   `;
 
   if (exclude) {
     values.push(exclude);
-    query += ` AND id != $${values.length}`;
+    sql += ` AND id != $${values.length}`;
   }
 
-  query += " ORDER BY RANDOM() LIMIT 1";
+  sql += " ORDER BY RANDOM() LIMIT 1";
 
-  const { rows } = await db.query(query, values);
+  const { rows } = await db.query(sql, values);
   return rows[0] || null;
 };
 
@@ -29,6 +35,9 @@ exports.findRandom = async ({ distance, time, type, exclude }) => {
  * @returns {Promise<Object|null>}
  */
 exports.findById = async (id) => {
-  const { rows } = await db.query("SELECT * FROM courses WHERE id = $1", [id]);
+  const { rows } = await db.query(
+    `SELECT ${COURSE_COLUMNS} FROM courses WHERE id = $1`,
+    [id],
+  );
   return rows[0] || null;
 };
