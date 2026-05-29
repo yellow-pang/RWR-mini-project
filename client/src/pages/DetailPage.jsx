@@ -9,13 +9,16 @@ function DetailPage() {
   const location = useLocation();
   const { currentCourse } = useCourse();
 
-  // location.state → context → 목 데이터 순으로 폴백
-  const course = location.state?.course ?? currentCourse ?? MOCK_COURSE;
+  // Prefer navigation state, then context, then Step 04 mock data.
+  const course = location.state?.course ?? currentCourse ?? {
+    ...MOCK_COURSE,
+    id: id ?? MOCK_COURSE.id,
+  };
 
   const [isFavorite, setIsFavorite] = useState(false);
 
   function handleFavoriteToggle() {
-    // Step 05에서 API 연결
+    // Step 05 will persist this through the favorites API.
     setIsFavorite((prev) => !prev);
   }
 
@@ -23,14 +26,14 @@ function DetailPage() {
     <div className="page detail-page">
       <div className="detail-header">
         <button className="btn-back" onClick={() => navigate(-1)}>
-          ← 뒤로
+          뒤로
         </button>
         <button
           className={`favorite-btn${isFavorite ? " active" : ""}`}
           onClick={handleFavoriteToggle}
           aria-label={isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
         >
-          {isFavorite ? "♥" : "♡"}
+          {isFavorite ? "저장됨" : "저장"}
         </button>
       </div>
 

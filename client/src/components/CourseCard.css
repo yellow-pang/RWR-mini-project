@@ -27,13 +27,12 @@
 
 /* 즐겨찾기 버튼 */
 .favorite-btn {
-  font-size: 20px;
-  font-family: serif;
+  font-size: 12px;
   line-height: 1;
-  padding: 6px 8px;
-  min-width: 36px;
+  padding: 7px 10px;
+  min-width: 52px;
   min-height: 36px;
-  border-radius: 50%;
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;

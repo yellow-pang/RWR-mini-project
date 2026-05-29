@@ -1,14 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import "./CourseCard.css";
 
-/**
- * CourseCard — 결과/즐겨찾기/이력 공용 코스 카드
- * @param {object} course - 코스 데이터
- * @param {boolean} isFavorite - 즐겨찾기 여부
- * @param {function} onFavoriteToggle - 즐겨찾기 토글 핸들러
- * @param {boolean} [showDate] - 이력 화면 날짜 표시 여부
- * @param {string} [date] - 추천 날짜 (showDate=true 시 사용)
- */
 function CourseCard({ course, isFavorite, onFavoriteToggle, showDate, date }) {
   const navigate = useNavigate();
 
@@ -25,7 +17,7 @@ function CourseCard({ course, isFavorite, onFavoriteToggle, showDate, date }) {
           onClick={onFavoriteToggle}
           aria-label={isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
         >
-          {isFavorite ? "♥" : "♡"}
+          {isFavorite ? "저장됨" : "저장"}
         </button>
       </div>
 
@@ -48,7 +40,7 @@ function CourseCard({ course, isFavorite, onFavoriteToggle, showDate, date }) {
       </div>
 
       <button className="btn-detail" onClick={handleDetail}>
-        상세 보기 →
+        상세 보기
       </button>
     </div>
   );

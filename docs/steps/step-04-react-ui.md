@@ -1,207 +1,190 @@
 # Step 04. React UI 구현
 
-> 작성일: 2025.01.28 | 단계: Step 04 / 8  
-> PR 문서: [docs/pr/pr-04-react-ui.md](../pr/pr-04-react-ui.md)
+> 작성일: 2026.05.29  
+> 보정일: 2026.05.29  
+> 관련 PR 문서: [docs/pr/pr-04-react-ui.md](../pr/pr-04-react-ui.md)
 
 ---
 
 ## 1. 작업 목표
 
-| #   | 목표                         | 완료 기준                                                     |
-| --- | ---------------------------- | ------------------------------------------------------------- |
-| 1   | 앱 공통 레이아웃 구성        | AppHeader(녹색 그라디언트 배너) + 페이지 콘텐츠 + TabBar 구조 |
-| 2   | 홈 페이지 (조건 선택)        | 거리·시간·유형 칩 선택 → 추천받기 활성화 / 초기화 텍스트링크  |
-| 3   | 결과 페이지 (추천 코스 표시) | ← 조건 변경 버튼 + CourseCard + 🔄 다시 추천 풀너비 버튼      |
-| 4   | 상세 페이지 (코스 상세 정보) | 뒤로가기 + 즐겨찾기 버튼 + 코스 메타 + 4개 섹션(CourseInfo)   |
-| 5   | 즐겨찾기 페이지              | 저장된 항목 카드 목록 또는 Empty State 표시                   |
-| 6   | 이력 페이지                  | 추천 이력 카드 목록 또는 Empty State 표시                     |
-| 7   | 디자인 목업 반영             | docs/images 목업과 레이아웃·색상·컴포넌트 일치                |
+Step 04의 목표는 Step 02에서 준비한 React Router 기반 구조 위에 MVP 주요 화면을 실제 사용 가능한 정적 UI로 구현하는 것이다. 실제 API 호출은 Step 05에서 처리하므로, 이번 단계는 화면 흐름, 공통 컴포넌트, mock 데이터 기반 인터랙션을 안정화하는 데 집중한다.
+
+| 목표 | 완료 기준 |
+| --- | --- |
+| 공통 레이아웃 | `Layout`이 헤더, 페이지 영역, 하단 탭을 감싼다 |
+| 메인 화면 | 거리, 시간, 이동 유형 선택 후 추천 결과로 이동한다 |
+| 결과 화면 | mock 추천 코스, 선택 조건, 다시 추천 버튼을 표시한다 |
+| 상세 화면 | 코스 소개, 추천 이유, 주의사항, 이용 팁을 표시한다 |
+| 즐겨찾기/이력 화면 | API 연동 전 empty state를 표시한다 |
+| UI 안정화 | 깨진 JSX와 한글 문구를 복구해 빌드 가능한 상태를 유지한다 |
 
 ---
 
 ## 2. 작업 배경
 
-Step 03에서 Express API 라우터 구현이 완료되었습니다.  
-이번 단계에서는 React + CSS로 프론트엔드 UI를 구현하고, 목업 이미지(docs/images/)와 최대한 일치하는 화면을 만듭니다.  
-실제 API 연결은 Step 05에서 처리하므로, 이번 단계는 mock 데이터를 사용합니다.
+현재 저장소에는 Step 01~04 문서와 코드가 존재한다. 다만 일부 파일에서 한글 인코딩이 깨지며 JSX 문자열이 닫히지 않는 문제가 확인되었다. 이 상태에서는 실제 개발 환경이 아니더라도 Vite 빌드 단계에서 실패할 가능성이 높으므로, Step 05 API 연동 전에 Step 04 UI 안정화가 필요하다.
+
+또한 `docs/images/`의 DALL-E 목업 이미지와 실제 CSS 구현 사이에 차이가 있어, 이번 문서에 UI 정합성 이슈를 명시하고 후속 작업 기준을 남긴다.
 
 ---
 
 ## 3. 아키텍처 개요
 
-### 3.1 라우팅 구조
+```mermaid
+flowchart TD
+    App[App.jsx] --> Provider[CourseProvider]
+    Provider --> Layout[Layout]
+    Layout --> Header[App Header]
+    Layout --> Outlet[React Router Outlet]
+    Layout --> TabBar[Bottom TabBar]
 
-```
-BrowserRouter
-└── CourseProvider (Context)
-    └── Layout (AppHeader + Outlet + TabBar)
-        ├── /              → HomePage
-        ├── /result        → ResultPage
-        ├── /courses/:id   → DetailPage
-        ├── /favorites     → FavoritesPage
-        └── /history       → HistoryPage
-```
+    Outlet --> Home[HomePage]
+    Outlet --> Result[ResultPage]
+    Outlet --> Detail[DetailPage]
+    Outlet --> Favorites[FavoritesPage]
+    Outlet --> History[HistoryPage]
 
-### 3.2 상태 관리
-
-```
-CourseContext
-├── conditions  { distance, time, type }  ← 홈 조건 선택 상태
-└── currentCourse  Object | null          ← 추천된 코스 (결과·상세 공유)
-```
-
-### 3.3 컴포넌트 트리
-
-```
-Layout
-├── AppHeader          ← 녹색 그라디언트 브랜딩 헤더
-├── <Outlet>           ← 페이지 콘텐츠 영역
-│   ├── HomePage
-│   │   └── 조건 칩 (거리 4개 / 시간 4개 / 유형 4개)
-│   ├── ResultPage
-│   │   └── CourseCard
-│   ├── DetailPage
-│   │   └── CourseInfo
-│   ├── FavoritesPage
-│   │   ├── CourseCard (목록)
-│   │   └── EmptyState
-│   └── HistoryPage
-│       ├── CourseCard (목록)
-│       └── EmptyState
-└── TabBar             ← 홈 / 즐겨찾기 / 최근
+    Result --> CourseCard[CourseCard]
+    Detail --> CourseInfo[CourseInfo]
+    Favorites --> EmptyState[EmptyState]
+    History --> EmptyState
 ```
 
 ---
 
-## 4. 디자인 시스템
+## 4. 생성/수정 파일 목록
 
-### 4.1 CSS 변수
-
-```css
---color-primary: #4caf50 /* 메인 녹색 */ --color-primary-dark: #388e3c
-  /* 진한 녹색 (그라디언트 끝) */ --color-card: #ffffff /* 카드 배경 */
-  --color-bg: #f5f5f5 /* 페이지 배경 */ --color-border: #e0e0e0 /* 경계선 */
-  --color-text-main: #212121 /* 본문 텍스트 */ --color-text-sub: #757575
-  /* 보조 텍스트 */ --color-danger: #e53935 /* 삭제·경고 */;
-```
-
-### 4.2 주요 버튼 스타일
-
-| 클래스          | 용도                               | 외형                             |
-| --------------- | ---------------------------------- | -------------------------------- |
-| `.btn-primary`  | 추천받기, 다시 추천, 코스 추천받기 | 녹색 채움, 비활성 시 opacity 0.4 |
-| `.btn-back`     | ← 조건 변경, ← 뒤로                | 배경 없음, 회색 텍스트           |
-| `.btn-reset`    | 초기화                             | 텍스트 링크 스타일 (밑줄)        |
-| `.favorite-btn` | ♡ / ♥ 즐겨찾기 토글                | 원형, 비활성 회색 / 활성 빨간색  |
+| 구분 | 파일 | 설명 |
+| --- | --- | --- |
+| 수정 | `client/src/context/CourseContext.jsx` | 조건 상태, 현재 코스 상태, Step 04 mock 코스 데이터 정리 |
+| 수정 | `client/src/pages/HomePage.jsx` | 조건 선택 UI와 추천 이동 흐름 복구 |
+| 수정 | `client/src/pages/ResultPage.jsx` | 결과 화면 텍스트, 조건 배지, 다시 추천 버튼 복구 |
+| 수정 | `client/src/pages/DetailPage.jsx` | 상세 화면의 뒤로가기, 저장 버튼, 코스 메타 정보 복구 |
+| 수정 | `client/src/pages/FavoritesPage.jsx` | 즐겨찾기 empty state 문구 복구 |
+| 수정 | `client/src/pages/HistoryPage.jsx` | 최근 추천 empty state 문구 복구 |
+| 수정 | `client/src/components/CourseCard.jsx` | 코스 카드, 저장 버튼, 상세 보기 버튼 복구 |
+| 수정 | `client/src/components/CourseInfo.jsx` | 상세 정보 4개 섹션 복구 |
+| 수정 | `client/src/components/EmptyState.jsx` | empty state 공통 컴포넌트 단순화 |
+| 수정 | `client/src/components/Layout.jsx` | 헤더 표기 복구 |
+| 수정 | `client/src/components/TabBar.jsx` | 하단 탭 라벨과 접근성 라벨 복구 |
+| 수정 | `docs/steps/step-04-react-ui.md` | Step 04 구현 및 안정화 내역 문서화 |
+| 수정 | `docs/pr/pr-04-react-ui.md` | PR 설명과 검증 항목 보정 |
 
 ---
 
-## 5. 생성/수정 파일 목록
+## 5. 주요 파일 설명
 
-### 5.1 신규 생성
-
-| 파일                                   | 설명                                 |
-| -------------------------------------- | ------------------------------------ |
-| `client/src/context/CourseContext.jsx` | 전역 조건·코스 상태 Context          |
-| `client/src/components/Layout.jsx`     | AppHeader + Outlet + TabBar 레이아웃 |
-| `client/src/components/Layout.css`     | 레이아웃 + AppHeader 스타일          |
-| `client/src/components/TabBar.jsx`     | 하단 탭 네비게이션 (NavLink 3개)     |
-| `client/src/components/TabBar.css`     | 탭바 스타일 + 활성 인디케이터 라인   |
-| `client/src/components/CourseCard.jsx` | 코스 정보 카드 컴포넌트              |
-| `client/src/components/CourseCard.css` | 카드 스타일 + 즐겨찾기 버튼          |
-| `client/src/components/CourseInfo.jsx` | 코스 상세 4개 섹션 컴포넌트          |
-| `client/src/components/CourseInfo.css` | 섹션 카드 스타일                     |
-| `client/src/components/EmptyState.jsx` | 빈 목록 상태 컴포넌트                |
-| `client/src/pages/HomePage.jsx`        | 조건 선택 페이지                     |
-| `client/src/pages/ResultPage.jsx`      | 추천 결과 페이지                     |
-| `client/src/pages/DetailPage.jsx`      | 코스 상세 페이지                     |
-| `client/src/pages/FavoritesPage.jsx`   | 즐겨찾기 목록 페이지                 |
-| `client/src/pages/HistoryPage.jsx`     | 추천 이력 페이지                     |
-
-### 5.2 수정
-
-| 파일                   | 주요 변경 내용                                    |
-| ---------------------- | ------------------------------------------------- |
-| `client/src/App.jsx`   | BrowserRouter + Routes 설정, Layout 중첩 라우트   |
-| `client/src/index.css` | CSS 변수, 버튼 공통 스타일, 페이지·카드·칩 스타일 |
+| 파일 | 역할 |
+| --- | --- |
+| `CourseContext.jsx` | 조건 선택값과 현재 추천 코스를 페이지 간 공유한다 |
+| `HomePage.jsx` | 사용자가 거리, 시간, 이동 유형을 선택하는 진입 화면이다 |
+| `ResultPage.jsx` | 추천 결과를 표시하고 다시 추천 흐름을 제공한다 |
+| `DetailPage.jsx` | 추천 코스의 상세 설명과 주의사항을 보여준다 |
+| `CourseCard.jsx` | 결과, 즐겨찾기, 이력 화면에서 재사용할 코스 카드이다 |
+| `CourseInfo.jsx` | 상세 화면에서 코스 정보를 섹션 단위로 표시한다 |
+| `EmptyState.jsx` | 데이터가 없을 때 사용자에게 다음 행동을 안내한다 |
 
 ---
 
-## 6. 주요 구현 내용
+## 6. 실행 방법
 
-### 6.1 AppHeader
+실행 위치: `C:\dev\RWR_project\client`
 
-```jsx
-<header className="app-header">
-  <span className="app-header-logo">🏃</span>
-  <div className="app-header-title-wrap">
-    <span className="app-header-title">RWR</span>
-    <span className="app-header-sub">Run Walk Random</span>
-  </div>
-</header>
+CMD:
+
+```cmd
+npm install
+npm run dev
 ```
 
-- `linear-gradient(135deg, #4CAF50 → #388E3C)` 녹색 그라디언트
-- 흰색 텍스트, 하단 고정 없이 레이아웃 상단에 배치
+PowerShell:
 
-### 6.2 HomePage 조건 선택
-
-```jsx
-// 3개 조건 모두 선택 여부 확인
-const allSelected = conditions.distance && conditions.time && conditions.type;
-
-// 칩 클릭 → Context 업데이트
-function handleChipSelect(field, value) {
-  setConditions((prev) => ({ ...prev, [field]: value }));
-}
+```powershell
+npm install
+npm run dev
 ```
 
-- 선택된 칩: `background-color: var(--color-primary)`, 흰색 텍스트
-- 비활성 추천받기 버튼: `opacity: 0.4` (초록색 유지)
-- 초기화 버튼: 3개 선택 시만 조건부 렌더, 텍스트 링크 스타일
+기대 결과:
 
-### 6.3 TabBar 활성 인디케이터
+- Vite 개발 서버가 실행된다.
+- 브라우저에서 `http://localhost:5173` 접속 시 RWR UI가 표시된다.
 
-```css
-.tab-item.active::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 25%;
-  right: 25%;
-  height: 3px;
-  background-color: var(--color-primary);
-  border-radius: 0 0 3px 3px;
-}
-```
+오류 발생 시 확인할 항목:
 
-### 6.4 즐겨찾기 버튼
-
-- 비활성: `♡` (serif 하트), 회색 테두리/배경
-- 활성: `♥` (serif 하트), 빨간 테두리/배경(`#fff0f0`)
+- `node_modules` 설치 여부
+- `react-router-dom` 설치 여부
+- 깨진 JSX 문자열 또는 닫히지 않은 태그 여부
 
 ---
 
-## 7. 화면별 검증 결과
+## 7. 검증 방법
 
-| 페이지        | 검증 항목                                             | 결과 |
-| ------------- | ----------------------------------------------------- | ---- |
-| HomePage      | 칩 선택, 추천받기 활성화, 초기화 텍스트링크           | ✅   |
-| HomePage      | 비활성 추천받기 faded green (opacity 0.4)             | ✅   |
-| ResultPage    | ← 조건 변경 뒤로가기, 코스 카드, 🔄 다시 추천 버튼    | ✅   |
-| ResultPage    | 즐겨찾기 ♡ → ♥ 토글 (회색 → 빨간색)                   | ✅   |
-| DetailPage    | ← 뒤로 + ♡ 버튼, 코스 제목/배지, CourseInfo 4섹션     | ✅   |
-| FavoritesPage | Empty State (♡ 아이콘 + 텍스트 + 코스 추천받기 버튼)  | ✅   |
-| HistoryPage   | Empty State (🏃 아이콘 + 텍스트 + 코스 추천받기 버튼) | ✅   |
-| TabBar        | 활성 탭 상단 녹색 인디케이터 라인                     | ✅   |
+| 화면 | 검증 항목 |
+| --- | --- |
+| 홈 | 거리, 시간, 이동 유형을 모두 선택해야 추천 버튼이 활성화된다 |
+| 홈 | 초기화 버튼으로 선택값이 해제된다 |
+| 결과 | 추천 코스 카드와 선택 조건 배지가 표시된다 |
+| 결과 | 저장 버튼이 토글된다 |
+| 결과 | 상세 보기 버튼으로 상세 화면에 이동한다 |
+| 상세 | 코스 소개, 추천 이유, 주의사항, 이용 팁이 표시된다 |
+| 즐겨찾기 | API 연동 전 empty state가 표시된다 |
+| 최근 | API 연동 전 empty state가 표시된다 |
+| 공통 | 하단 탭으로 홈, 즐겨찾기, 최근 화면을 이동할 수 있다 |
 
 ---
 
-## 8. 다음 단계
+## 8. 오류 대처
 
-Step 05에서 처리할 내용:
+| 증상 | 확인할 항목 |
+| --- | --- |
+| 화면이 흰색으로 표시됨 | 브라우저 콘솔의 JSX 파싱 오류 확인 |
+| 버튼 클릭 후 이동하지 않음 | `BrowserRouter`, `Routes`, `Navigate` 설정 확인 |
+| 상세 화면 데이터가 비어 있음 | `location.state`, `currentCourse`, `MOCK_COURSE` fallback 순서 확인 |
+| 한글이 깨져 보임 | 파일 인코딩을 UTF-8로 저장했는지 확인 |
 
-- Express API 연결 (`/api/courses/recommend` 실제 호출)
-- 즐겨찾기 저장/삭제 API 연결
-- 이력 조회 API 연결
-- 로딩 스피너, 에러 처리 UI
+---
+
+## 9. 보안 고려사항
+
+- Step 04는 실제 API 호출과 사용자 데이터 저장을 수행하지 않는다.
+- 즐겨찾기와 이력 저장은 Step 05에서 익명 UUID와 API 응답 형식을 기준으로 연결한다.
+- mock 데이터에는 민감 정보가 포함되지 않는다.
+
+---
+
+## 10. 목업-CSS 정합성 메모
+
+현재 `docs/images/mockup-main.png`, `mockup-result.png`, `mockup-detail.png`는 DALL-E로 제작된 시각 기준이며, 실제 CSS 구현과 완전히 일치하지 않는다.
+
+| 항목 | 현재 상태 | 후속 조치 |
+| --- | --- | --- |
+| 색상 | 실제 구현은 `#4caf50` 계열 중심 | 목업의 톤과 디자인 시스템 중 하나를 기준으로 확정 필요 |
+| 버튼/카드 반경 | 코드상 8~16px 혼재 | 반복 카드와 버튼 반경 기준 통일 필요 |
+| 헤더 | 실제 구현은 단순 브랜드 헤더 | 목업 헤더의 시각 밀도 반영 여부 결정 필요 |
+| 아이콘 | 깨짐 방지를 위해 텍스트 라벨 중심으로 보정 | 아이콘 라이브러리 도입 여부는 별도 결정 |
+| 상세 디자인 | Step 04는 구조 우선 | Step 05 이후 API 상태 UI와 함께 시각 정합성 보완 |
+
+---
+
+## 11. 다음 단계 예고
+
+Step 05에서는 현재 mock 데이터 흐름을 실제 Express API와 연결한다.
+
+```mermaid
+flowchart LR
+    Home[HomePage 조건 선택] --> CoursesAPI[GET /api/courses/random]
+    CoursesAPI --> Result[ResultPage 결과 표시]
+    Result --> HistoryAPI[POST /api/history]
+    Result --> FavoritesAPI[POST/DELETE /api/favorites]
+    FavoritesAPI --> Favorites[GET /api/favorites]
+    HistoryAPI --> History[GET /api/history]
+```
+
+Step 05 주요 작업:
+
+- `client/src/api/`의 TODO fetch 함수 구현
+- 추천 결과 로딩/오류 상태 처리
+- 즐겨찾기 저장/해제 API 연동
+- 최근 추천 이력 저장/조회 API 연동
+- API 실패 시 사용자 메시지 표시
