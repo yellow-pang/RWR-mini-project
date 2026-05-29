@@ -14,9 +14,9 @@ const TIME_OPTIONS = [
 ];
 
 const TYPE_OPTIONS = [
-  { label: "🚶 걷기", value: "걷기" },
-  { label: "🏃 조깅", value: "조깅" },
-  { label: "💨 러닝", value: "러닝" },
+  { label: "걷기", value: "걷기" },
+  { label: "조깅", value: "조깅" },
+  { label: "산책", value: "산책" },
 ];
 
 function HomePage() {
@@ -37,7 +37,7 @@ function HomePage() {
   }
 
   function handleRecommend() {
-    // Step 05에서 실제 API 연결 — 현재는 목 데이터 사용
+    // Step 05 will replace this mock course with a real API response.
     setCurrentCourse(MOCK_COURSE);
     navigate("/result");
   }
@@ -45,7 +45,9 @@ function HomePage() {
   return (
     <div className="page home-page">
       <h1 className="page-title">오늘의 코스</h1>
-      <p className="page-desc">조건을 선택하고 랜덤 코스를 추천받으세요</p>
+      <p className="page-desc">
+        거리, 시간, 이동 유형을 선택하고 랜덤 코스를 추천받으세요.
+      </p>
 
       <section className="condition-section">
         <h2 className="condition-title">거리</h2>
@@ -78,7 +80,7 @@ function HomePage() {
       </section>
 
       <section className="condition-section">
-        <h2 className="condition-title">운동 유형</h2>
+        <h2 className="condition-title">이동 유형</h2>
         <div className="chip-group">
           {TYPE_OPTIONS.map((opt) => (
             <button
@@ -97,7 +99,7 @@ function HomePage() {
         disabled={!allSelected}
         onClick={handleRecommend}
       >
-        🎯 추천받기
+        추천받기
       </button>
       {allSelected && (
         <button className="btn-reset" onClick={handleReset}>

@@ -7,7 +7,7 @@ function Layout() {
     <div className="layout">
       <header className="app-header">
         <span className="app-header-logo" aria-hidden="true">
-          🏃
+          RWR
         </span>
         <div className="app-header-text">
           <span className="app-header-title">RWR</span>

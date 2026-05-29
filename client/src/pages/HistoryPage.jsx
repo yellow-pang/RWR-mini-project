@@ -2,7 +2,7 @@ import { useState } from "react";
 import EmptyState from "../components/EmptyState";
 import CourseCard from "../components/CourseCard";
 
-// Step 05에서 API 연결 — 현재는 빈 배열로 EmptyState 확인
+// Step 05 will replace this empty list with GET /api/history.
 const MOCK_HISTORY = [];
 
 function HistoryPage() {
@@ -10,7 +10,7 @@ function HistoryPage() {
   const [favorites, setFavorites] = useState([]);
 
   function handleFavoriteToggle(courseId) {
-    // Step 05에서 API 연결
+    // Step 05 will persist this through the favorites API.
     setFavorites((prev) =>
       prev.includes(courseId)
         ? prev.filter((id) => id !== courseId)
@@ -24,9 +24,8 @@ function HistoryPage() {
 
       {history.length === 0 ? (
         <EmptyState
-          icon="🏃"
-          title="추천 이력이 없어요"
-          description="코스를 추천받으면 여기에 기록됩니다"
+          title="추천 이력이 없습니다"
+          description="코스를 추천받으면 최근 10개의 기록이 이곳에 표시됩니다."
           linkLabel="코스 추천받기"
           linkTo="/"
         />

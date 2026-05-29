@@ -2,14 +2,14 @@ import { useState } from "react";
 import EmptyState from "../components/EmptyState";
 import CourseCard from "../components/CourseCard";
 
-// Step 05에서 API 연결 — 현재는 빈 배열로 EmptyState 확인
+// Step 05 will replace this empty list with GET /api/favorites.
 const MOCK_FAVORITES = [];
 
 function FavoritesPage() {
   const [favorites, setFavorites] = useState(MOCK_FAVORITES);
 
   function handleFavoriteToggle(courseId) {
-    // Step 05에서 API 연결
+    // Step 05 will persist deletion through the favorites API.
     setFavorites((prev) => prev.filter((f) => f.id !== courseId));
   }
 
@@ -19,9 +19,8 @@ function FavoritesPage() {
 
       {favorites.length === 0 ? (
         <EmptyState
-          icon="♡"
-          title="저장된 즐겨찾기가 없어요"
-          description="마음에 드는 코스를 저장해 보세요"
+          title="저장된 즐겨찾기가 없습니다"
+          description="마음에 드는 코스를 저장하면 이곳에서 다시 확인할 수 있습니다."
           linkLabel="코스 추천받기"
           linkTo="/"
         />

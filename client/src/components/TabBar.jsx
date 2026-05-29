@@ -10,7 +10,7 @@ function TabBar() {
         className={({ isActive }) => `tab-item${isActive ? " active" : ""}`}
       >
         <span className="tab-icon" aria-hidden="true">
-          🏠
+          Home
         </span>
         <span className="tab-label">홈</span>
       </NavLink>
@@ -20,7 +20,7 @@ function TabBar() {
         className={({ isActive }) => `tab-item${isActive ? " active" : ""}`}
       >
         <span className="tab-icon" aria-hidden="true">
-          ⭐
+          Save
         </span>
         <span className="tab-label">즐겨찾기</span>
       </NavLink>
@@ -30,7 +30,7 @@ function TabBar() {
         className={({ isActive }) => `tab-item${isActive ? " active" : ""}`}
       >
         <span className="tab-icon" aria-hidden="true">
-          🕐
+          Log
         </span>
         <span className="tab-label">최근</span>
       </NavLink>
