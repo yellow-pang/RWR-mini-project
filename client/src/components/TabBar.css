@@ -1,0 +1,44 @@
+/* 하단 탭바 — 화면 고정 */
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 600px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background-color: var(--color-card);
+  border-top: 1px solid var(--color-border);
+  z-index: 100;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  padding: 8px 0;
+  text-decoration: none;
+  color: var(--color-text-sub);
+  font-size: 12px;
+  min-height: 44px; /* 터치 타겟 최소 44px */
+  justify-content: center;
+  transition: color 0.15s;
+}
+
+.tab-item.active {
+  color: var(--color-primary);
+}
+
+.tab-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.tab-label {
+  font-size: 11px;
+}
