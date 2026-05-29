@@ -1,5 +1,9 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCourse, MOCK_COURSE } from "../context/CourseContext";
+import { fetchRandomCourse } from "../api/courses";
+import { addHistory } from "../api/history";
+import { useCourse } from "../context/CourseContext";
+import { getUserId } from "../utils/userId";
 
 const DISTANCE_OPTIONS = [
   { label: "1km", value: 1 },
@@ -14,14 +18,16 @@ const TIME_OPTIONS = [
 ];
 
 const TYPE_OPTIONS = [
-  { label: "걷기", value: "걷기" },
-  { label: "조깅", value: "조깅" },
-  { label: "산책", value: "산책" },
+  { label: "걷기", value: "嫄룰린" },
+  { label: "조깅", value: "議곌퉭" },
+  { label: "산책", value: "?щ떇" },
 ];
 
 function HomePage() {
   const navigate = useNavigate();
   const { conditions, setConditions, setCurrentCourse } = useCourse();
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const allSelected =
     conditions.distance !== null &&
@@ -29,17 +35,33 @@ function HomePage() {
     conditions.type !== null;
 
   function handleSelect(key, value) {
+    setErrorMessage("");
     setConditions((prev) => ({ ...prev, [key]: value }));
   }
 
   function handleReset() {
+    setErrorMessage("");
     setConditions({ distance: null, time: null, type: null });
   }
 
-  function handleRecommend() {
-    // Step 05 will replace this mock course with a real API response.
-    setCurrentCourse(MOCK_COURSE);
-    navigate("/result");
+  async function handleRecommend() {
+    if (!allSelected || isLoading) return;
+
+    try {
+      setIsLoading(true);
+      setErrorMessage("");
+      const userId = getUserId();
+      const response = await fetchRandomCourse(conditions);
+      setCurrentCourse(response.data);
+      await addHistory(userId, response.data.id).catch(() => null);
+      navigate("/result");
+    } catch (err) {
+      setErrorMessage(
+        err.message || "추천 코스를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -94,12 +116,14 @@ function HomePage() {
         </div>
       </section>
 
+      {errorMessage && <p className="form-error">{errorMessage}</p>}
+
       <button
         className="btn-primary"
-        disabled={!allSelected}
+        disabled={!allSelected || isLoading}
         onClick={handleRecommend}
       >
-        추천받기
+        {isLoading ? "추천 중..." : "추천받기"}
       </button>
       {allSelected && (
         <button className="btn-reset" onClick={handleReset}>

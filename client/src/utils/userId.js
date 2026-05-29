@@ -1,14 +1,15 @@
 const USER_ID_KEY = "rwr_user_id";
 
-/**
- * 익명 사용자 UUID를 반환합니다.
- * localStorage에 저장된 값이 없으면 새로 생성하여 저장합니다.
- * @returns {string} UUID v4 문자열
- */
 export function getUserId() {
   let userId = localStorage.getItem(USER_ID_KEY);
   if (!userId) {
-    userId = crypto.randomUUID();
+    userId =
+      crypto.randomUUID?.() ||
+      "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+        const random = (Math.random() * 16) | 0;
+        const value = char === "x" ? random : (random & 0x3) | 0x8;
+        return value.toString(16);
+      });
     localStorage.setItem(USER_ID_KEY, userId);
   }
   return userId;

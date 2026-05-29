@@ -1,23 +1,49 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { fetchFavorites, removeFavorite } from "../api/favorites";
 import EmptyState from "../components/EmptyState";
 import CourseCard from "../components/CourseCard";
-
-// Step 05 will replace this empty list with GET /api/favorites.
-const MOCK_FAVORITES = [];
+import { getUserId } from "../utils/userId";
 
 function FavoritesPage() {
-  const [favorites, setFavorites] = useState(MOCK_FAVORITES);
+  const [favorites, setFavorites] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
-  function handleFavoriteToggle(courseId) {
-    // Step 05 will persist deletion through the favorites API.
-    setFavorites((prev) => prev.filter((f) => f.id !== courseId));
+  useEffect(() => {
+    async function loadFavorites() {
+      try {
+        setIsLoading(true);
+        setMessage("");
+        const response = await fetchFavorites(getUserId());
+        setFavorites(response.data);
+      } catch (err) {
+        setMessage(err.message || "즐겨찾기 목록을 불러오지 못했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadFavorites();
+  }, []);
+
+  async function handleFavoriteToggle(courseId) {
+    try {
+      setMessage("");
+      await removeFavorite(getUserId(), courseId);
+      setFavorites((prev) => prev.filter((item) => item.courseId !== courseId));
+    } catch (err) {
+      setMessage(err.message || "즐겨찾기를 삭제하지 못했습니다.");
+    }
   }
 
   return (
     <div className="page favorites-page">
       <h1 className="page-title">즐겨찾기</h1>
 
-      {favorites.length === 0 ? (
+      {message && <p className="form-error">{message}</p>}
+      {isLoading ? (
+        <p className="page-desc">즐겨찾기 목록을 불러오는 중입니다...</p>
+      ) : favorites.length === 0 ? (
         <EmptyState
           title="저장된 즐겨찾기가 없습니다"
           description="마음에 드는 코스를 저장하면 이곳에서 다시 확인할 수 있습니다."
@@ -28,10 +54,10 @@ function FavoritesPage() {
         <div className="card-list">
           {favorites.map((course) => (
             <CourseCard
-              key={course.id}
+              key={course.courseId}
               course={course}
               isFavorite
-              onFavoriteToggle={() => handleFavoriteToggle(course.id)}
+              onFavoriteToggle={() => handleFavoriteToggle(course.courseId)}
             />
           ))}
         </div>
