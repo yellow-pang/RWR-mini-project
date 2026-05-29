@@ -13,7 +13,7 @@
 export async function fetchRandomCourse({ distance, time, type }) {
   // TODO: Step 05 구현
   // GET /api/courses/random?distance=3&time=30&type=조깅
-  throw new Error('fetchRandomCourse: Not implemented')
+  throw new Error("fetchRandomCourse: Not implemented");
 }
 
 /**
@@ -24,5 +24,5 @@ export async function fetchRandomCourse({ distance, time, type }) {
 export async function fetchCourseById(id) {
   // TODO: Step 05 구현
   // GET /api/courses/:id
-  throw new Error('fetchCourseById: Not implemented')
+  throw new Error("fetchCourseById: Not implemented");
 }

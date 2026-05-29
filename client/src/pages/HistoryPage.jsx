@@ -9,7 +9,7 @@ function HistoryPage() {
         <p className="empty-state-desc">코스를 추천받으면 기록이 쌓입니다</p>
       </div>
     </div>
-  )
+  );
 }
 
-export default HistoryPage
+export default HistoryPage;

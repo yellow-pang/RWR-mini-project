@@ -1,4 +1,4 @@
-const USER_ID_KEY = 'rwr_user_id'
+const USER_ID_KEY = "rwr_user_id";
 
 /**
  * 익명 사용자 UUID를 반환합니다.
@@ -6,10 +6,10 @@ const USER_ID_KEY = 'rwr_user_id'
  * @returns {string} UUID v4 문자열
  */
 export function getUserId() {
-  let userId = localStorage.getItem(USER_ID_KEY)
+  let userId = localStorage.getItem(USER_ID_KEY);
   if (!userId) {
-    userId = crypto.randomUUID()
-    localStorage.setItem(USER_ID_KEY, userId)
+    userId = crypto.randomUUID();
+    localStorage.setItem(USER_ID_KEY, userId);
   }
-  return userId
+  return userId;
 }

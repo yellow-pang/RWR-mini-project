@@ -9,7 +9,7 @@ function FavoritesPage() {
         <p className="empty-state-desc">마음에 드는 코스를 저장해 보세요</p>
       </div>
     </div>
-  )
+  );
 }
 
-export default FavoritesPage
+export default FavoritesPage;

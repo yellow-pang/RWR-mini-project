@@ -13,7 +13,7 @@
 export async function fetchHistory(userId) {
   // TODO: Step 05 구현
   // GET /api/history?userId=...
-  throw new Error('fetchHistory: Not implemented')
+  throw new Error("fetchHistory: Not implemented");
 }
 
 /**
@@ -25,5 +25,5 @@ export async function fetchHistory(userId) {
 export async function addHistory(userId, courseId) {
   // TODO: Step 05 구현
   // POST /api/history
-  throw new Error('addHistory: Not implemented')
+  throw new Error("addHistory: Not implemented");
 }

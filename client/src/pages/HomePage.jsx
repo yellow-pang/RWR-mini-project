@@ -38,7 +38,7 @@ function HomePage() {
         추천받기
       </button>
     </div>
-  )
+  );
 }
 
-export default HomePage
+export default HomePage;

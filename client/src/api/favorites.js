@@ -13,7 +13,7 @@
 export async function fetchFavorites(userId) {
   // TODO: Step 05 구현
   // GET /api/favorites?userId=...
-  throw new Error('fetchFavorites: Not implemented')
+  throw new Error("fetchFavorites: Not implemented");
 }
 
 /**
@@ -25,7 +25,7 @@ export async function fetchFavorites(userId) {
 export async function addFavorite(userId, courseId) {
   // TODO: Step 05 구현
   // POST /api/favorites
-  throw new Error('addFavorite: Not implemented')
+  throw new Error("addFavorite: Not implemented");
 }
 
 /**
@@ -37,5 +37,5 @@ export async function addFavorite(userId, courseId) {
 export async function removeFavorite(userId, courseId) {
   // TODO: Step 05 구현
   // DELETE /api/favorites/:courseId?userId=...
-  throw new Error('removeFavorite: Not implemented')
+  throw new Error("removeFavorite: Not implemented");
 }

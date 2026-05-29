@@ -1,6 +1,6 @@
-import { Outlet } from 'react-router-dom'
-import TabBar from './TabBar'
-import './Layout.css'
+import { Outlet } from "react-router-dom";
+import TabBar from "./TabBar";
+import "./Layout.css";
 
 function Layout() {
   return (
@@ -10,7 +10,7 @@ function Layout() {
       </main>
       <TabBar />
     </div>
-  )
+  );
 }
 
-export default Layout
+export default Layout;

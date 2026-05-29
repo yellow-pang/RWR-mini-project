@@ -1,7 +1,7 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from "react-router-dom";
 
 function ResultPage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   return (
     <div className="page result-page">
@@ -13,15 +13,13 @@ function ResultPage() {
       </div>
 
       <div className="result-actions">
-        <button className="btn-secondary" onClick={() => navigate('/')}>
+        <button className="btn-secondary" onClick={() => navigate("/")}>
           조건 변경
         </button>
-        <button className="btn-primary">
-          다시 추천
-        </button>
+        <button className="btn-primary">다시 추천</button>
       </div>
     </div>
-  )
+  );
 }
 
-export default ResultPage
+export default ResultPage;
