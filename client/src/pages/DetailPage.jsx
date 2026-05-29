@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { ApiError, getFriendlyErrorMessage } from "../api/client";
 import { fetchCourseById } from "../api/courses";
 import {
   addFavorite,
@@ -22,6 +23,7 @@ function DetailPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(!course);
   const [message, setMessage] = useState("");
+  const [noticeMessage, setNoticeMessage] = useState("");
 
   useEffect(() => {
     async function loadCourse() {
@@ -32,7 +34,12 @@ function DetailPage() {
         setCourse(response.data);
         setCurrentCourse(response.data);
       } catch (err) {
-        setMessage(err.message || "코스 상세 정보를 불러오지 못했습니다.");
+        setMessage(
+          getFriendlyErrorMessage(
+            err,
+            "코스 상세 정보를 불러오지 못했습니다.",
+          ),
+        );
       } finally {
         setIsLoading(false);
       }
@@ -63,6 +70,7 @@ function DetailPage() {
 
     try {
       setMessage("");
+      setNoticeMessage("");
       const userId = getUserId();
       if (isFavorite) {
         await removeFavorite(userId, id);
@@ -72,7 +80,14 @@ function DetailPage() {
         setIsFavorite(true);
       }
     } catch (err) {
-      setMessage(err.message || "즐겨찾기 상태를 변경하지 못했습니다.");
+      if (err instanceof ApiError && err.status === 409) {
+        setIsFavorite(true);
+        setNoticeMessage("이미 즐겨찾기에 저장된 코스입니다.");
+        return;
+      }
+      setMessage(
+        getFriendlyErrorMessage(err, "즐겨찾기 상태를 변경하지 못했습니다."),
+      );
     }
   }
 
@@ -111,6 +126,7 @@ function DetailPage() {
       </div>
 
       {message && <p className="form-error">{message}</p>}
+      {noticeMessage && <p className="form-notice">{noticeMessage}</p>}
 
       <div className="detail-title-area">
         <h1 className="page-title">{course.title}</h1>

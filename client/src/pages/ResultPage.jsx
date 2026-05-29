@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ApiError, getFriendlyErrorMessage } from "../api/client";
 import { fetchRandomCourse } from "../api/courses";
 import {
   addFavorite,
@@ -18,6 +19,7 @@ function ResultPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [noticeMessage, setNoticeMessage] = useState("");
 
   const course = currentCourse;
 
@@ -43,6 +45,7 @@ function ResultPage() {
 
     try {
       setMessage("");
+      setNoticeMessage("");
       const userId = getUserId();
       if (isFavorite) {
         await removeFavorite(userId, course.id);
@@ -52,7 +55,14 @@ function ResultPage() {
         setIsFavorite(true);
       }
     } catch (err) {
-      setMessage(err.message || "즐겨찾기 상태를 변경하지 못했습니다.");
+      if (err instanceof ApiError && err.status === 409) {
+        setIsFavorite(true);
+        setNoticeMessage("이미 즐겨찾기에 저장된 코스입니다.");
+        return;
+      }
+      setMessage(
+        getFriendlyErrorMessage(err, "즐겨찾기 상태를 변경하지 못했습니다."),
+      );
     }
   }
 
@@ -62,15 +72,26 @@ function ResultPage() {
     try {
       setIsLoading(true);
       setMessage("");
+      setNoticeMessage("");
       const userId = getUserId();
       const response = await fetchRandomCourse({
         ...conditions,
         exclude: course?.id,
       });
       setCurrentCourse(response.data);
-      await addHistory(userId, response.data.id).catch(() => null);
+
+      try {
+        await addHistory(userId, response.data.id);
+      } catch {
+        setNoticeMessage("추천 결과는 표시되지만 최근 이력 저장은 실패했습니다.");
+      }
     } catch (err) {
-      setMessage(err.message || "다시 추천할 코스를 불러오지 못했습니다.");
+      setMessage(
+        getFriendlyErrorMessage(
+          err,
+          "다시 추천할 코스를 불러오지 못했습니다.",
+        ),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -107,6 +128,7 @@ function ResultPage() {
       </div>
 
       {message && <p className="form-error">{message}</p>}
+      {noticeMessage && <p className="form-notice">{noticeMessage}</p>}
 
       <CourseCard
         course={course}

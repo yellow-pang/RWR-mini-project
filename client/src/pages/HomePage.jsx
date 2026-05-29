@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getFriendlyErrorMessage } from "../api/client";
 import { fetchRandomCourse } from "../api/courses";
 import { addHistory } from "../api/history";
 import { useCourse } from "../context/CourseContext";
@@ -28,6 +29,7 @@ function HomePage() {
   const { conditions, setConditions, setCurrentCourse } = useCourse();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [noticeMessage, setNoticeMessage] = useState("");
 
   const allSelected =
     conditions.distance !== null &&
@@ -36,11 +38,13 @@ function HomePage() {
 
   function handleSelect(key, value) {
     setErrorMessage("");
+    setNoticeMessage("");
     setConditions((prev) => ({ ...prev, [key]: value }));
   }
 
   function handleReset() {
     setErrorMessage("");
+    setNoticeMessage("");
     setConditions({ distance: null, time: null, type: null });
   }
 
@@ -50,14 +54,24 @@ function HomePage() {
     try {
       setIsLoading(true);
       setErrorMessage("");
+      setNoticeMessage("");
       const userId = getUserId();
       const response = await fetchRandomCourse(conditions);
       setCurrentCourse(response.data);
-      await addHistory(userId, response.data.id).catch(() => null);
+
+      try {
+        await addHistory(userId, response.data.id);
+      } catch {
+        setNoticeMessage("추천 결과는 표시되지만 최근 이력 저장은 실패했습니다.");
+      }
+
       navigate("/result");
     } catch (err) {
       setErrorMessage(
-        err.message || "추천 코스를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        getFriendlyErrorMessage(
+          err,
+          "추천 코스를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        ),
       );
     } finally {
       setIsLoading(false);
@@ -117,6 +131,7 @@ function HomePage() {
       </section>
 
       {errorMessage && <p className="form-error">{errorMessage}</p>}
+      {noticeMessage && <p className="form-notice">{noticeMessage}</p>}
 
       <button
         className="btn-primary"

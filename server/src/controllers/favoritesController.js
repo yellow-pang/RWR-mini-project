@@ -1,13 +1,17 @@
 const { validationResult } = require("express-validator");
 const favoritesService = require("../services/favoritesService");
 
-exports.getList = async (req, res, next) => {
+function sendValidationError(req, res) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res
-      .status(400)
-      .json({ success: false, message: errors.array()[0].msg });
+    res.status(400).json({ success: false, message: errors.array()[0].msg });
+    return true;
   }
+  return false;
+}
+
+exports.getList = async (req, res, next) => {
+  if (sendValidationError(req, res)) return;
 
   try {
     const data = await favoritesService.findByUser(req.query.userId);
@@ -18,12 +22,7 @@ exports.getList = async (req, res, next) => {
 };
 
 exports.add = async (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res
-      .status(400)
-      .json({ success: false, message: errors.array()[0].msg });
-  }
+  if (sendValidationError(req, res)) return;
 
   try {
     const { userId, courseId } = req.body;
@@ -31,24 +30,17 @@ exports.add = async (req, res, next) => {
     res.status(201).json({ success: true, data });
   } catch (err) {
     if (err.code === "23505") {
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message: "이미 즐겨찾기에 추가된 코스입니다.",
-        });
+      return res.status(409).json({
+        success: false,
+        message: "이미 즐겨찾기에 추가된 코스입니다.",
+      });
     }
     next(err);
   }
 };
 
 exports.remove = async (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res
-      .status(400)
-      .json({ success: false, message: errors.array()[0].msg });
-  }
+  if (sendValidationError(req, res)) return;
 
   try {
     const { courseId } = req.params;

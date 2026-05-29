@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getFriendlyErrorMessage } from "../api/client";
 import { fetchFavorites, removeFavorite } from "../api/favorites";
 import EmptyState from "../components/EmptyState";
 import CourseCard from "../components/CourseCard";
@@ -17,7 +18,12 @@ function FavoritesPage() {
         const response = await fetchFavorites(getUserId());
         setFavorites(response.data);
       } catch (err) {
-        setMessage(err.message || "즐겨찾기 목록을 불러오지 못했습니다.");
+        setMessage(
+          getFriendlyErrorMessage(
+            err,
+            "즐겨찾기 목록을 불러오지 못했습니다.",
+          ),
+        );
       } finally {
         setIsLoading(false);
       }
@@ -32,7 +38,9 @@ function FavoritesPage() {
       await removeFavorite(getUserId(), courseId);
       setFavorites((prev) => prev.filter((item) => item.courseId !== courseId));
     } catch (err) {
-      setMessage(err.message || "즐겨찾기를 삭제하지 못했습니다.");
+      setMessage(
+        getFriendlyErrorMessage(err, "즐겨찾기를 삭제하지 못했습니다."),
+      );
     }
   }
 

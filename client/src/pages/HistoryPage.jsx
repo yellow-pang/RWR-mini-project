@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ApiError, getFriendlyErrorMessage } from "../api/client";
 import { addFavorite, fetchFavorites, removeFavorite } from "../api/favorites";
 import { fetchHistory } from "../api/history";
 import EmptyState from "../components/EmptyState";
@@ -18,12 +19,14 @@ function HistoryPage() {
   const [favoriteIds, setFavoriteIds] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [noticeMessage, setNoticeMessage] = useState("");
 
   useEffect(() => {
     async function loadHistory() {
       try {
         setIsLoading(true);
         setMessage("");
+        setNoticeMessage("");
         const userId = getUserId();
         const [historyResponse, favoritesResponse] = await Promise.all([
           fetchHistory(userId),
@@ -32,7 +35,12 @@ function HistoryPage() {
         setHistory(historyResponse.data);
         setFavoriteIds(favoritesResponse.data.map((item) => item.courseId));
       } catch (err) {
-        setMessage(err.message || "최근 추천 이력을 불러오지 못했습니다.");
+        setMessage(
+          getFriendlyErrorMessage(
+            err,
+            "최근 추천 이력을 불러오지 못했습니다.",
+          ),
+        );
       } finally {
         setIsLoading(false);
       }
@@ -44,6 +52,7 @@ function HistoryPage() {
   async function handleFavoriteToggle(courseId) {
     try {
       setMessage("");
+      setNoticeMessage("");
       const userId = getUserId();
       if (favoriteIds.includes(courseId)) {
         await removeFavorite(userId, courseId);
@@ -53,7 +62,16 @@ function HistoryPage() {
         setFavoriteIds((prev) => [...prev, courseId]);
       }
     } catch (err) {
-      setMessage(err.message || "즐겨찾기 상태를 변경하지 못했습니다.");
+      if (err instanceof ApiError && err.status === 409) {
+        setFavoriteIds((prev) =>
+          prev.includes(courseId) ? prev : [...prev, courseId],
+        );
+        setNoticeMessage("이미 즐겨찾기에 저장된 코스입니다.");
+        return;
+      }
+      setMessage(
+        getFriendlyErrorMessage(err, "즐겨찾기 상태를 변경하지 못했습니다."),
+      );
     }
   }
 
@@ -62,6 +80,7 @@ function HistoryPage() {
       <h1 className="page-title">최근 추천</h1>
 
       {message && <p className="form-error">{message}</p>}
+      {noticeMessage && <p className="form-notice">{noticeMessage}</p>}
       {isLoading ? (
         <p className="page-desc">최근 추천 이력을 불러오는 중입니다...</p>
       ) : history.length === 0 ? (
