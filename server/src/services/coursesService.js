@@ -1,0 +1,34 @@
+const db = require("../db");
+
+/**
+ * 조건에 맞는 코스 중 랜덤으로 1개 반환
+ * @param {{ distance: number, time: number, type: string, exclude?: string }} params
+ * @returns {Promise<Object|null>}
+ */
+exports.findRandom = async ({ distance, time, type, exclude }) => {
+  const values = [distance, time, type];
+  let query = `
+    SELECT * FROM courses
+    WHERE distance = $1 AND time = $2 AND type = $3
+  `;
+
+  if (exclude) {
+    values.push(exclude);
+    query += ` AND id != $${values.length}`;
+  }
+
+  query += " ORDER BY RANDOM() LIMIT 1";
+
+  const { rows } = await db.query(query, values);
+  return rows[0] || null;
+};
+
+/**
+ * ID로 코스 1개 반환
+ * @param {string} id
+ * @returns {Promise<Object|null>}
+ */
+exports.findById = async (id) => {
+  const { rows } = await db.query("SELECT * FROM courses WHERE id = $1", [id]);
+  return rows[0] || null;
+};
