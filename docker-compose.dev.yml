@@ -1,0 +1,32 @@
+version: "3.9"
+
+# ── 개발 환경 Docker Compose ─────────────────────────────────────────────────
+# PostgreSQL DB 컨테이너만 실행합니다.
+# React(Vite)와 Express는 로컬에서 직접 실행하세요:
+#   cd server && npm run dev   → http://localhost:3000
+#   cd client && npm run dev   → http://localhost:5173
+#
+# 실행: docker-compose -f docker-compose.dev.yml up -d
+# 중지: docker-compose -f docker-compose.dev.yml down
+
+services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: rwr_user
+      POSTGRES_PASSWORD: rwr_password
+      POSTGRES_DB: rwr_db
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./server/src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./server/src/db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rwr_user -d rwr_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data_dev:

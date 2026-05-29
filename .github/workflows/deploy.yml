@@ -1,0 +1,80 @@
+name: Deploy to Ubuntu VM
+
+on:
+  push:
+    branches:
+      - main
+
+# ── TODO: 아래 Secrets를 GitHub 저장소에 등록하세요 ─────────────────────────
+# Settings → Secrets and variables → Actions → New repository secret
+#   GHCR_TOKEN         : ghcr.io 인증용 GitHub Personal Access Token (packages:write 권한)
+#   VITE_KAKAO_MAP_KEY : 카카오맵 JavaScript API 키
+#   VM_HOST            : Ubuntu VM IP 또는 도메인
+#   VM_USER            : SSH 접속 사용자 (예: ubuntu)
+#   VM_SSH_KEY         : SSH 개인키 (PEM 형식 전체 내용)
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build and push client image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./client/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/rwr-client:latest
+          build-args: |
+            VITE_KAKAO_MAP_KEY=${{ secrets.VITE_KAKAO_MAP_KEY }}
+
+      - name: Build and push server image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          file: ./server/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/rwr-server:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose.yml to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "docker-compose.yml"
+          target: "~/rwr-project/"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            cd ~/rwr-project
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
