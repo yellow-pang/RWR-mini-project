@@ -10,7 +10,7 @@
 
 courses / favorites / history REST API 엔드포인트를 구현한다.  
 라우터 → 컨트롤러 → 서비스 3계층 구조로 분리하며,  
-express-validator 입력 검증과 전역 에러 핸들러를 활용한다.
+express-validator 입력 검증, 전역 에러 핸들러, 서버 보안 미들웨어(helmet + body size limit)를 적용한다.
 
 ---
 
@@ -66,23 +66,23 @@ server/src/
 
 ### 수정
 
-| 파일                | 수정 내용                         |
-| ------------------- | --------------------------------- |
-| `server/src/app.js` | 라우터 require + `app.use()` 등록 |
+| 파일                | 수정 내용                                                                  |
+| ------------------- | -------------------------------------------------------------------------- |
+| `server/src/app.js` | 라우터 등록 + `helmet()` 보안 헤더 + `express.json({ limit: '4kb' })` 추가 |
 
 ### 생성
 
-| 파일                                            | 설명                                 |
-| ----------------------------------------------- | ------------------------------------ |
-| `server/src/routes/courses.js`                  | 코스 라우터 + express-validator 검증 |
-| `server/src/routes/favorites.js`                | 즐겨찾기 라우터 + 검증               |
-| `server/src/routes/history.js`                  | 이력 라우터 + 검증                   |
-| `server/src/controllers/coursesController.js`   | 코스 컨트롤러                        |
-| `server/src/controllers/favoritesController.js` | 즐겨찾기 컨트롤러                    |
-| `server/src/controllers/historyController.js`   | 이력 컨트롤러                        |
-| `server/src/services/coursesService.js`         | 코스 DB 쿼리                         |
-| `server/src/services/favoritesService.js`       | 즐겨찾기 DB 쿼리                     |
-| `server/src/services/historyService.js`         | 이력 DB 쿼리                         |
+| 파일                                            | 설명                                                |
+| ----------------------------------------------- | --------------------------------------------------- |
+| `server/src/routes/courses.js`                  | 코스 라우터 + express-validator 검증                |
+| `server/src/routes/favorites.js`                | 즐겨찾기 라우터 + 검증 (uuidRule/courseIdRule 헬퍼) |
+| `server/src/routes/history.js`                  | 이력 라우터 + 검증                                  |
+| `server/src/controllers/coursesController.js`   | 코스 컨트롤러                                       |
+| `server/src/controllers/favoritesController.js` | 즐겨찾기 컨트롤러 (23505 중복 오류 → 409 처리)      |
+| `server/src/controllers/historyController.js`   | 이력 컨트롤러                                       |
+| `server/src/services/coursesService.js`         | 코스 DB 쿼리 (COURSE_COLUMNS 상수로 컬럼 명시)      |
+| `server/src/services/favoritesService.js`       | 즐겨찾기 DB 쿼리 (courses JOIN으로 상세 정보 포함)  |
+| `server/src/services/historyService.js`         | 이력 DB 쿼리 (courses JOIN으로 상세 정보 포함)      |
 
 ---
 
@@ -179,14 +179,15 @@ server/src/
 
 ## 6. 검증 규칙 (express-validator)
 
-| 파라미터   | 검증 규칙                                                | 실패 응답 |
-| ---------- | -------------------------------------------------------- | --------- |
-| `distance` | `isInt({ min: 1 })` + `isIn([1,3,5])`                    | 400       |
-| `time`     | `isInt()` + `isIn([15,30,60])`                           | 400       |
-| `type`     | `isIn(['걷기','조깅','러닝'])`                           | 400       |
-| `userId`   | `isUUID(4)`                                              | 400       |
-| `courseId` | `isString` + `matches(/^route-/)` + `isLength({max:20})` | 400       |
-| `limit`    | `optional` + `isInt({min:1,max:50})`                     | 400       |
+| 파라미터   | 검증 규칙                                                           | 실패 응답 | 비고                                       |
+| ---------- | ------------------------------------------------------------------- | --------- | ------------------------------------------ |
+| `distance` | `isInt()` + `isIn([1,3,5])`                                         | 400       | `.toInt()`으로 자동 변환                   |
+| `time`     | `isInt()` + `isIn([15,30,60])`                                      | 400       | `.toInt()`으로 자동 변환                   |
+| `type`     | `.trim()` → `.notEmpty()` → `isIn(['걷기','조깅','러닝'])`          | 400       | trim 먼저 — 공백만 있으면 "필수" 오류 반환 |
+| `userId`   | `isUUID(4)`                                                         | 400       | UUID v4 형식 강제                          |
+| `courseId` | `.trim()` + `matches(/^route-[a-z0-9-]+$/)` + `isLength({max:20})`  | 400       | 임의 문자열 주입 방지                      |
+| `exclude`  | `optional` + `matches(/^route-[a-z0-9-]+$/)` + `isLength({max:20})` | 400       | 다시 추천 시 제외 ID                       |
+| `limit`    | `optional` + `isInt({min:1,max:50})` + `.toInt()`                   | 400       | 서비스 기본값 10 사용                      |
 
 ---
 
@@ -232,11 +233,42 @@ http://localhost:3000/api/health → {"success":true, ...} 응답
 
 ## 10. 보안 고려사항
 
-- `userId` UUID 형식 검증 → SQL Injection 기본 방어
-- `courseId` 형식 검증 (`route-` 접두사) → 임의 문자열 주입 방지
-- `express-validator` sanitize 적용 (`trim()`) → 공백 입력 처리
-- 에러 핸들러에서 스택 트레이스 미노출 (이미 `app.js`에 구현)
-- `limit` 최대값 제한(50) → 과도한 데이터 반환 방지
+### 적용된 보안 조치
+
+| 항목                                            | 구현 위치                | 이유                                                                  |
+| ----------------------------------------------- | ------------------------ | --------------------------------------------------------------------- |
+| `helmet()` 미들웨어                             | `app.js`                 | 12개 보안 HTTP 헤더 자동 설정 (XSS, clickjacking, MIME sniffing 방어) |
+| `express.json({ limit: '4kb' })`                | `app.js`                 | 대용량 페이로드로 서버 메모리 소진하는 DoS 공격 방어                  |
+| Parameterized Query (`$1`, `$2`)                | 모든 서비스              | SQL Injection 방어 — 사용자 입력이 SQL 구조에 영향을 줄 수 없음       |
+| `userId` UUID v4 형식 검증                      | 모든 라우터              | 임의 문자열로 타인 데이터 접근 시도 방어                              |
+| `courseId` 정규식 검증 (`/^route-[a-z0-9-]+$/`) | 모든 라우터              | 경로 조작 및 임의 문자열 주입 방지                                    |
+| `.trim()` → `.notEmpty()` 순서 보장             | `routes/courses.js`      | 공백 문자열이 필수 검증을 통과하는 버그 방지                          |
+| `limit` 최대값 제한 (`max: 50`)                 | `routes/history.js`      | 과도한 데이터 조회 방지                                               |
+| 전역 에러 핸들러에서 스택 트레이스 미노출       | `app.js`                 | 내부 구조 정보 유출 방지                                              |
+| DB 오류 코드 처리 (`23505` → 409)               | `favoritesController.js` | 중복 즐겨찾기를 500이 아닌 의미있는 오류로 처리                       |
+
+### helmet이 설정하는 주요 헤더
+
+| 헤더                        | 값                   | 효과                               |
+| --------------------------- | -------------------- | ---------------------------------- |
+| `X-Content-Type-Options`    | `nosniff`            | MIME 타입 스니핑으로 XSS 공격 방지 |
+| `X-Frame-Options`           | `SAMEORIGIN`         | 클릭재킹(Clickjacking) 방지        |
+| `Content-Security-Policy`   | `default-src 'self'` | 외부 스크립트·리소스 로드 차단     |
+| `Strict-Transport-Security` | `max-age=31536000`   | HTTPS 강제 (HSTS)                  |
+| `X-DNS-Prefetch-Control`    | `off`                | DNS 프리패치로 인한 정보 유출 방지 |
+| `Referrer-Policy`           | `no-referrer`        | 이전 URL 정보 외부 전송 차단       |
+
+### SELECT 컬럼 명시 (`SELECT *` 지양)
+
+`coursesService.js`에서 `SELECT *` 대신 `COURSE_COLUMNS` 상수로 컬럼을 명시한다.  
+이유: 추후 스키마에 민감한 컬럼이 추가될 때 의도치 않게 클라이언트에 노출되는 것을 방지한다.
+
+```js
+const COURSE_COLUMNS = `
+  id, title, distance, time, type, mood,
+  description, reason, caution, tip
+`;
+```
 
 ---
 

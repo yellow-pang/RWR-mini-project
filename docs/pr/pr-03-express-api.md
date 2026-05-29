@@ -18,7 +18,7 @@
 ## GitHub PR 제목 (복사해서 사용)
 
 ```
-[Step 03] Express API 라우터 구현 — courses/favorites/history, 3계층 구조, express-validator
+[Step 03] Express API 라우터 구현 — 3계층 구조 + express-validator + helmet 보안 미들웨어
 ```
 
 ---
@@ -28,17 +28,18 @@
 ```markdown
 ## 개요
 
-RWR 프로젝트 Step 03: Express API 라우터 구현 완료
+RWR 프로젝트 Step 03: Express API 라우터 구현 + 보안 강화 완료
 
-courses / favorites / history REST API를 라우터 → 컨트롤러 → 서비스 3계층으로 구현합니다.
-express-validator 입력 검증과 DB 에러(중복 즐겨찾기 등) 처리를 포함합니다.
+courses / favorites / history REST API를 라우터 → 컨트롤러 → 서비스 3계층으로 구현합니다.  
+express-validator 입력 검증, DB 에러(중복 즐겨찾기 등) 처리,  
+helmet 보안 헤더 + 요청 로딩 방어를 포함합니다.
 
 ## 주요 변경사항
 
-- `server/src/app.js` : 라우터 등록 활성화
+- `server/src/app.js` : 라우터 등록 + `helmet()` + `express.json({ limit: '4kb' })`
 - `server/src/routes/` : courses / favorites / history 라우터 + 검증 미들웨어
 - `server/src/controllers/` : 3개 컨트롤러 (요청 파싱·응답 조립)
-- `server/src/services/` : 3개 서비스 (DB 쿼리 로직)
+- `server/src/services/` : 3개 서비스 (DB 쿼리 로직, SELECT 콜럼 명시)
 - `docs/plans/plan-03-express-api.md` : Step 03 작업계획서
 
 ## 구현된 엔드포인트
@@ -53,11 +54,23 @@ express-validator 입력 검증과 DB 에러(중복 즐겨찾기 등) 처리를 
 | GET    | `/api/history`             | 추천 이력 조회 |
 | POST   | `/api/history`             | 추천 이력 저장 |
 
+## 보안 조치
+
+| 조치                             | 위치                | 효과                                         |
+| -------------------------------- | ------------------- | -------------------------------------------- |
+| `helmet()` 적용                  | `app.js`            | CSP, X-Frame-Options, HSTS 등 12개 보안 헤더 |
+| `express.json({ limit: '4kb' })` | `app.js`            | 대용량 페이로드 DoS 방어 → 4KB 초과 시 413   |
+| Parameterized Query              | 모든 서비스         | SQL Injection 차단                           |
+| UUID v4 형식 검증                | 모든 라우터         | 사용자 ID 위변조 방어                        |
+| `courseId` 정규식 검증           | 모든 라우터         | 경로 조작 방지                               |
+| `SELECT *` 금지 → 콜럼 명시      | `coursesService.js` | 미래 스키마 변경 시 정보 누출 방지           |
+
 ## 테스트 방법
 
 1. `cd server && npm install && npm run dev`
 2. `GET http://localhost:3000/api/health` 응답 확인
 3. `GET http://localhost:3000/api/courses/random?distance=99` → 400 응답 확인
+4. 5KB JSON 요청 → 413 확인
 
 > ⚠️ DB 없이 실행 시 서버 기동은 되나 DB 쿼리 호출 시 연결 오류 발생 (정상)
 
@@ -71,9 +84,10 @@ express-validator 입력 검증과 DB 에러(중복 즐겨찾기 등) 처리를 
 
 ## 포함된 커밋 목록
 
-| #   | 커밋 해시 | 커밋 메시지                                     | 변경 내용 요약                   | 날짜 |
-| --- | --------- | ----------------------------------------------- | -------------------------------- | ---- |
-| 1   |           | `feat(server): Step 03 Express API 라우터 구현` | routes/controllers/services 전체 |      |
+| #   | 커밋 해시 | 커밋 메시지                                     | 변경 내용 요약                                      | 날짜 |
+| --- | --------- | ----------------------------------------------- | --------------------------------------------------- | ---- |
+| 1   |           | `feat(server): Step 03 Express API 라우터 구현` | routes/controllers/services 전체, 라우터 등록       |      |
+| 2   |           | `fix(server): 보안 및 코드 품질 개선`           | helmet, body limit 4kb, trim 순서, SELECT 콜럼 명시 |      |
 
 ---
 
@@ -81,7 +95,7 @@ express-validator 입력 검증과 DB 에러(중복 즐겨찾기 등) 처리를 
 
 ### 수정
 
-- [ ] `server/src/app.js` — 라우터 3개 등록 확인
+- [ ] `server/src/app.js` — 라우터 3개 등록 + `helmet()` + `express.json({ limit: '4kb' })` 확인
 
 ### 신규 생성
 
@@ -115,8 +129,15 @@ express-validator 입력 검증과 DB 에러(중복 즐겨찾기 등) 처리를 
 
 - [ ] `GET /api/courses/random?distance=99` → 400
 - [ ] `GET /api/courses/random?distance=3&time=30` (type 누락) → 400
+- [ ] `GET /api/courses/random?distance=3&time=30&type=%20` (공백) → 400 "type은 필수입니다."
 - [ ] `POST /api/favorites` body 없음 → 400
 - [ ] `GET /api/favorites` (userId 없음) → 400
+
+### 보안
+
+- [ ] `GET /api/health` 응답 헤더에 `X-Content-Type-Options: nosniff` 존재 확인
+- [ ] `X-Frame-Options: SAMEORIGIN` 헤더 확인
+- [ ] 5KB JSON 페이로드 요청 → 413 확인
 
 ### 라우팅
 
@@ -135,6 +156,7 @@ express-validator 입력 검증과 DB 에러(중복 즐겨찾기 등) 처리를 
 
 ## 업데이트 이력
 
-| 날짜       | 변경 내용         | 관련 커밋 |
-| ---------- | ----------------- | --------- |
-| 2026.05.29 | PR 문서 초안 작성 | —         |
+| 날짜       | 변경 내용                                         | 관련 커밋 |
+| ---------- | ------------------------------------------------- | --------- |
+| 2026.05.29 | PR 문서 초안 작성                                 | —         |
+| 2026.05.29 | helmet + body size limit 보안 강화 내용 반영 수정 | —         |
