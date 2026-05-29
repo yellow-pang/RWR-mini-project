@@ -1,5 +1,5 @@
 ﻿import { Routes, Route, Navigate } from "react-router-dom";
-import { CourseProvider } from "./context/CourseContext";
+import { CourseProvider } from "./context/CourseProvider";
 import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
 import ResultPage from "./pages/ResultPage";

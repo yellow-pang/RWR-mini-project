@@ -1,16 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { ApiError, getFriendlyErrorMessage } from "../api/client";
+import { getFriendlyErrorMessage } from "../api/client";
 import { fetchCourseById } from "../api/courses";
-import {
-  addFavorite,
-  fetchFavorites,
-  removeFavorite,
-} from "../api/favorites";
-import { useCourse } from "../context/CourseContext";
-import { getMoodLabel, getTypeLabel } from "../utils/courseDisplay";
-import { getUserId } from "../utils/userId";
 import CourseInfo from "../components/CourseInfo";
+import { useCourse } from "../hooks/useCourse";
+import { useFavoriteStatus } from "../hooks/useFavoriteStatus";
+import { getMoodLabel, getTypeLabel } from "../utils/courseDisplay";
 
 function DetailPage() {
   const { id } = useParams();
@@ -20,10 +15,9 @@ function DetailPage() {
   const [course, setCourse] = useState(
     location.state?.course?.description ? location.state.course : currentCourse,
   );
-  const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(!course);
   const [message, setMessage] = useState("");
-  const [noticeMessage, setNoticeMessage] = useState("");
+  const favorite = useFavoriteStatus(id);
 
   useEffect(() => {
     async function loadCourse() {
@@ -49,47 +43,6 @@ function DetailPage() {
       loadCourse();
     }
   }, [course?.description, id, setCurrentCourse]);
-
-  useEffect(() => {
-    if (!id) return;
-
-    async function loadFavoriteState() {
-      try {
-        const response = await fetchFavorites(getUserId());
-        setIsFavorite(response.data.some((item) => item.courseId === id));
-      } catch {
-        setIsFavorite(false);
-      }
-    }
-
-    loadFavoriteState();
-  }, [id]);
-
-  async function handleFavoriteToggle() {
-    if (!id) return;
-
-    try {
-      setMessage("");
-      setNoticeMessage("");
-      const userId = getUserId();
-      if (isFavorite) {
-        await removeFavorite(userId, id);
-        setIsFavorite(false);
-      } else {
-        await addFavorite(userId, id);
-        setIsFavorite(true);
-      }
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        setIsFavorite(true);
-        setNoticeMessage("이미 즐겨찾기에 저장된 코스입니다.");
-        return;
-      }
-      setMessage(
-        getFriendlyErrorMessage(err, "즐겨찾기 상태를 변경하지 못했습니다."),
-      );
-    }
-  }
 
   if (isLoading) {
     return (
@@ -117,16 +70,19 @@ function DetailPage() {
           뒤로
         </button>
         <button
-          className={`favorite-btn${isFavorite ? " active" : ""}`}
-          onClick={handleFavoriteToggle}
-          aria-label={isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+          className={`favorite-btn${favorite.isFavorite ? " active" : ""}`}
+          onClick={favorite.toggleFavorite}
+          aria-label={favorite.isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
         >
-          {isFavorite ? "저장됨" : "저장"}
+          {favorite.isFavorite ? "저장됨" : "저장"}
         </button>
       </div>
 
       {message && <p className="form-error">{message}</p>}
-      {noticeMessage && <p className="form-notice">{noticeMessage}</p>}
+      {favorite.message && <p className="form-error">{favorite.message}</p>}
+      {favorite.noticeMessage && (
+        <p className="form-notice">{favorite.noticeMessage}</p>
+      )}
 
       <div className="detail-title-area">
         <h1 className="page-title">{course.title}</h1>

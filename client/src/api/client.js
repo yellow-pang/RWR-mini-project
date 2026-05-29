@@ -21,9 +21,11 @@ export function getFriendlyErrorMessage(error, fallback) {
   if (error instanceof ApiError) {
     return error.message || FALLBACK_MESSAGES[error.status] || fallback;
   }
+
   if (error instanceof TypeError) {
     return "서버에 연결할 수 없습니다. API 서버가 실행 중인지 확인해 주세요.";
   }
+
   return fallback || "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
 

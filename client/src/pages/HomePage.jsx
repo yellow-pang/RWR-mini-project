@@ -2,27 +2,16 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFriendlyErrorMessage } from "../api/client";
 import { fetchRandomCourse } from "../api/courses";
-import { addHistory } from "../api/history";
-import { useCourse } from "../context/CourseContext";
-import { getUserId } from "../utils/userId";
-
-const DISTANCE_OPTIONS = [
-  { label: "1km", value: 1 },
-  { label: "3km", value: 3 },
-  { label: "5km", value: 5 },
-];
-
-const TIME_OPTIONS = [
-  { label: "15분", value: 15 },
-  { label: "30분", value: 30 },
-  { label: "60분", value: 60 },
-];
-
-const TYPE_OPTIONS = [
-  { label: "걷기", value: "嫄룰린" },
-  { label: "조깅", value: "議곌퉭" },
-  { label: "산책", value: "?щ떇" },
-];
+import {
+  DISTANCE_OPTIONS,
+  TIME_OPTIONS,
+  TYPE_OPTIONS,
+} from "../constants/courseOptions";
+import { useCourse } from "../hooks/useCourse";
+import {
+  HISTORY_SAVE_FAILED_MESSAGE,
+  saveHistoryQuietly,
+} from "../utils/history";
 
 function HomePage() {
   const navigate = useNavigate();
@@ -36,15 +25,18 @@ function HomePage() {
     conditions.time !== null &&
     conditions.type !== null;
 
-  function handleSelect(key, value) {
+  function clearMessages() {
     setErrorMessage("");
     setNoticeMessage("");
+  }
+
+  function handleSelect(key, value) {
+    clearMessages();
     setConditions((prev) => ({ ...prev, [key]: value }));
   }
 
   function handleReset() {
-    setErrorMessage("");
-    setNoticeMessage("");
+    clearMessages();
     setConditions({ distance: null, time: null, type: null });
   }
 
@@ -53,16 +45,13 @@ function HomePage() {
 
     try {
       setIsLoading(true);
-      setErrorMessage("");
-      setNoticeMessage("");
-      const userId = getUserId();
+      clearMessages();
       const response = await fetchRandomCourse(conditions);
       setCurrentCourse(response.data);
 
-      try {
-        await addHistory(userId, response.data.id);
-      } catch {
-        setNoticeMessage("추천 결과는 표시되지만 최근 이력 저장은 실패했습니다.");
+      const historySaved = await saveHistoryQuietly(response.data.id);
+      if (!historySaved) {
+        setNoticeMessage(HISTORY_SAVE_FAILED_MESSAGE);
       }
 
       navigate("/result");

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { getFriendlyErrorMessage } from "../api/client";
 import { fetchFavorites, removeFavorite } from "../api/favorites";
-import EmptyState from "../components/EmptyState";
 import CourseCard from "../components/CourseCard";
+import EmptyState from "../components/EmptyState";
 import { getUserId } from "../utils/userId";
 
 function FavoritesPage() {
@@ -32,7 +32,7 @@ function FavoritesPage() {
     loadFavorites();
   }, []);
 
-  async function handleFavoriteToggle(courseId) {
+  async function handleFavoriteRemove(courseId) {
     try {
       setMessage("");
       await removeFavorite(getUserId(), courseId);
@@ -65,7 +65,7 @@ function FavoritesPage() {
               key={course.courseId}
               course={course}
               isFavorite
-              onFavoriteToggle={() => handleFavoriteToggle(course.courseId)}
+              onFavoriteToggle={() => handleFavoriteRemove(course.courseId)}
             />
           ))}
         </div>

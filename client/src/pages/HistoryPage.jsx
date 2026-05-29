@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { ApiError, getFriendlyErrorMessage } from "../api/client";
 import { addFavorite, fetchFavorites, removeFavorite } from "../api/favorites";
 import { fetchHistory } from "../api/history";
-import EmptyState from "../components/EmptyState";
 import CourseCard from "../components/CourseCard";
+import EmptyState from "../components/EmptyState";
 import { getUserId } from "../utils/userId";
 
 function formatDate(value) {
