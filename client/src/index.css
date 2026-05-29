@@ -127,24 +127,6 @@ a {
   cursor: not-allowed;
 }
 
-.btn-secondary {
-  display: block;
-  padding: 12px 20px;
-  border-radius: 8px;
-  background-color: var(--color-card);
-  color: var(--color-primary);
-  font-size: 15px;
-  font-weight: 600;
-  border: 2px solid var(--color-primary);
-  text-align: center;
-  transition: background-color 0.15s;
-  min-height: 44px;
-}
-
-.btn-secondary:hover {
-  background-color: #f1f8f1;
-}
-
 .btn-back {
   display: inline-flex;
   align-items: center;
@@ -202,18 +184,6 @@ a {
 }
 
 /* ========================================
-   결과 화면
-   ======================================== */
-.course-card-placeholder {
-  padding: 40px 20px;
-  background-color: var(--color-card);
-  border-radius: 12px;
-  text-align: center;
-  color: var(--color-text-sub);
-  margin-bottom: 20px;
-}
-
-/* ========================================
    빈 상태 (Empty State)
    ======================================== */
 .empty-state {
@@ -235,15 +205,6 @@ a {
 .empty-state-desc {
   font-size: 14px;
   color: var(--color-text-sub);
-}
-
-/* ========================================
-   플레이스홀더 (Step 04 구현 전 임시)
-   ======================================== */
-.placeholder-text {
-  font-size: 14px;
-  color: var(--color-text-sub);
-  padding: 8px 0;
 }
 
 /* ========================================
@@ -317,15 +278,6 @@ a {
 
 .detail-meta {
   margin-top: 10px;
-}
-
-/* ========================================
-   EmptyState 추가 스타일
-   ======================================== */
-.empty-state-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  display: block;
 }
 
 .empty-state-btn {
