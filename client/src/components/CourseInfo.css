@@ -1,0 +1,49 @@
+/* ========================================
+   CourseInfo 컴포넌트 — 상세 페이지 섹션
+   ======================================== */
+.course-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.course-info-section {
+  background-color: var(--color-card);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.course-info-section.danger {
+  background-color: #fff5f5;
+  border: 1px solid #ffcdd2;
+}
+
+.course-info-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 8px;
+}
+
+.course-info-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.course-info-section.danger .course-info-label {
+  color: var(--color-danger);
+}
+
+.course-info-text {
+  font-size: 14px;
+  color: var(--color-text-sub);
+  line-height: 1.7;
+}
+
+.course-info-section.danger .course-info-text {
+  color: #c62828;
+}

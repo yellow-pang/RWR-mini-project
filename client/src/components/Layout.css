@@ -8,6 +8,45 @@
   background-color: var(--color-bg);
 }
 
+/* 앱 헤더 */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--color-primary-dark) 100%
+  );
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.app-header-logo {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.app-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.app-header-title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.app-header-sub {
+  font-size: 10px;
+  opacity: 0.82;
+  letter-spacing: 0.05em;
+}
+
 /* 메인 콘텐츠 영역 — 탭바 높이(60px)만큼 하단 여백 */
 .layout-main {
   flex: 1;
