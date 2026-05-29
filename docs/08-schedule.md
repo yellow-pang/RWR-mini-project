@@ -2,6 +2,7 @@
 
 > **문서 유형**: 프로젝트 관리 / 개발 계획  
 > **작성일**: 2026.05.28  
+> **최종 수정일**: 2026.05.29 (React + Express + PostgreSQL 풀스택 일정으로 업데이트)  
 > **관련 문서**: [기술 스택](./07-tech-stack.md) | [요구사항 정의서](./03-requirements.md)
 
 ---
@@ -24,26 +25,26 @@
 
 ### 기간별 일정 요약
 
-#### 🗓 금요일 5/29 (14:00~23:00 · 약 9시간) — P0 핵심 기능
+#### 🗓 금요일 5/29 (14:00~23:00 · 약 9시간) — 환경 세팅 + 백엔드 기초 + P0 착수
 
-| 시간        | 단계                   | 주요 작업                                            | 산출물              |
-| ----------- | ---------------------- | ---------------------------------------------------- | ------------------- |
-| 14:00~15:30 | **환경 세팅**          | Vite+React 초기화, 폴더 구조, GitHub 연결, CSS 변수  | 개발 서버 실행      |
-| 15:30~17:30 | **메인 UI**            | MainPage, ConditionGroup, OptionChip, 조건 상태 관리 | 조건 선택 화면 동작 |
-| 17:30~19:30 | **데이터 + 추천 로직** | routeData.js (10개 코스), getRandomRoute, 필터링     | 코스 추천 기능 동작 |
-| 19:30~21:30 | **결과 화면**          | ResultPage, CourseCard, 다시 추천 버튼               | 추천 결과 화면 완성 |
-| 21:30~23:00 | **상세 화면 (1부)**    | DetailPage 레이아웃, CourseInfo 섹션 컴포넌트        | 상세 화면 기초 구조 |
+| 시간        | 단계                         | 주요 작업                                                                      | 산출물                        |
+| ----------- | ---------------------------- | ------------------------------------------------------------------------------ | ----------------------------- |
+| 14:00~15:30 | **환경 세팅 (프론트)**       | Vite+React 초기화, client/ 폴더 구조, GitHub 연결, CSS 변수                    | React 개발 서버 실행          |
+| 15:30~17:00 | **환경 세팅 (백엔드)**       | Express 서버 초기화, server/ 폴더 구조, PostgreSQL 연결, schema.sql + seed.sql | Express API 서버 실행         |
+| 17:00~19:00 | **API 1차 + 추천 로직**      | GET /courses/random 엔드포인트, DB 쿼리 + 랜덤 반환, client API 연동           | 코스 추천 API 동작            |
+| 19:00~21:00 | **메인 UI + 결과 화면**      | MainPage, ConditionGroup, OptionChip, ResultPage, CourseCard                   | 조건 선택 → 결과 화면         |
+| 21:00~23:00 | **상세 화면 + 즐겨찾기 API** | DetailPage, GET /courses/:id, POST/DELETE /favorites 엔드포인트 기초           | 상세 화면 + API 기반 즐겨찾기 |
 
-#### 🗓 토요일 5/30 (09:00~23:00 · 약 14시간) — P1 + 확장 기능
+#### 🗓 토요일 5/30 (09:00~23:00 · 약 14시간) — API 완성 + 프론트-백엔드 통합 + P1
 
-| 시간        | 단계                  | 주요 작업                                                  | 산출물                  |
-| ----------- | --------------------- | ---------------------------------------------------------- | ----------------------- |
-| 09:00~10:30 | **즐겨찾기 완성**     | storageUtils.js, FavoriteButton, FavoritesPage             | 즐겨찾기 저장/해제 완성 |
-| 10:30~12:00 | **이력 + 네비게이션** | HistoryPage, addHistory, BottomTab, React Router 전체 연결 | 하단 탭 네비게이션 완성 |
-| 13:00~16:00 | **반응형 CSS**        | 전체 미디어 쿼리 (375/768/1024px), 카드 그리드             | 모바일·PC 반응형 완성   |
-| 16:00~19:00 | **🗺 지도 API 연동**  | 카카오맵 SDK 연결, 코스 시작점 마커, 지도 컴포넌트         | 코스 위치 지도 표시     |
-| 19:00~21:00 | **코스 데이터 확장**  | 코스 10개 → 20개 작성 (다양한 조건 조합 보완)              | 더 풍부한 추천 결과     |
-| 21:00~23:00 | **중간 테스트**       | npm run build, 기능 점검, 버그 목록 작성                   | 빌드 성공 확인          |
+| 시간        | 단계                    | 주요 작업                                                          | 산출물                 |
+| ----------- | ----------------------- | ------------------------------------------------------------------ | ---------------------- |
+| 09:00~10:30 | **즐겨찾기 + 이력 API** | GET/POST /favorites, GET/POST /history, FavoritesPage, HistoryPage | 즐겨찾기·이력 API 완성 |
+| 10:30~12:00 | **네비게이션 + 통합**   | BottomTab, React Router 연결, API 에러 처리, 로딩 상태 UI          | 3탭 + API 완전 통합    |
+| 13:00~16:00 | **반응형 CSS**          | 전체 미디어 쿼리 (375/768/1024px), 카드 그리드                     | 모바일·PC 반응형 완성  |
+| 16:00~19:00 | **🗺 지도 API 연동**    | 카카오맵 SDK 연결, 코스 시작점 마커, 지도 컴포넌트                 | 코스 위치 지도 표시    |
+| 19:00~21:00 | **코스 데이터 확장**    | seed.sql 10개 → 20개 추가 (DB INSERT), 조건 조합 커버리지 보완     | 더 풍부한 추천 결과    |
+| 21:00~23:00 | **중간 테스트**         | 프론트 + 백엔드 통합 기능 점검, 빌드 오류 수정, 버그 목록 작성     | 통합 동작 확인         |
 
 #### 🗓 일요일 5/31 (10:00~23:59 · 약 14시간) — 도전 기능 + 마무리
 
@@ -61,55 +62,81 @@
 
 ```mermaid
 gantt
-    title RWR 개발 일정 (2026.05.29 금 ~ 05.31 일)
+    title RWR 개발 일정 (2026.05.29 금 ~ 05.31 일) — 풀스택
     dateFormat YYYY-MM-DD HH:mm
     axisFormat %m/%d
 
-    section 금요일 (P0 핵심)
-    환경 세팅 & 기반 구축         :done, setup,    2026-05-29 14:00, 90m
-    메인 화면 UI & 조건 선택      :done, main,     2026-05-29 15:30, 120m
-    코스 데이터 & 추천 로직       :done, logic,    2026-05-29 17:30, 120m
-    결과 화면                     :done, result,   2026-05-29 19:30, 120m
-    상세 화면 1부                 :done, detail1,  2026-05-29 21:30, 90m
+    section 금요일 (환경 + 백엔드 기초 + P0)
+    React 환경 세팅 & 폴더 구조     :done, setup_f,  2026-05-29 14:00, 90m
+    Express 서버 + PostgreSQL 연결  :done, setup_b,  2026-05-29 15:30, 90m
+    추천 API + DB 쿼리              :done, api1,     2026-05-29 17:00, 120m
+    메인 UI + 결과 화면             :done, ui1,      2026-05-29 19:00, 120m
+    상세 화면 + 즐겨찾기 API 기초   :done, detail1,  2026-05-29 21:00, 120m
 
-    section 토요일 (P1 + 확장)
-    즐겨찾기 완성                 :detail2,        2026-05-30 09:00, 90m
-    이력 & 하단 네비게이션        :history,        2026-05-30 10:30, 90m
-    반응형 CSS 전체 적용          :responsive,     2026-05-30 13:00, 180m
-    카카오맵 API 연동             :crit, map,      2026-05-30 16:00, 180m
-    코스 데이터 확장 20개         :data,           2026-05-30 19:00, 120m
-    중간 빌드 테스트              :test1,          2026-05-30 21:00, 120m
+    section 토요일 (API 완성 + 통합 + P1)
+    즐겨찾기·이력 API 완성          :detail2,        2026-05-30 09:00, 90m
+    네비게이션 + 프론트-백엔드 통합 :history,        2026-05-30 10:30, 90m
+    반응형 CSS 전체 적용            :responsive,     2026-05-30 13:00, 180m
+    카카오맵 API 연동               :crit, map,      2026-05-30 16:00, 180m
+    코스 데이터 확장 (seed.sql 20개):data,           2026-05-30 19:00, 120m
+    중간 통합 테스트                :test1,          2026-05-30 21:00, 120m
 
     section 일요일 (도전 + 마무리)
-    GPS 현재 위치 기반 필터       :crit, gps,      2026-05-31 10:00, 120m
-    Web Share API 공유 기능       :share,          2026-05-31 12:00, 90m
-    UI 완성도 & 애니메이션        :ui,             2026-05-31 14:00, 180m
-    통합 테스트 & 버그 수정       :test2,          2026-05-31 17:00, 180m
-    빌드 검증 & 최종 제출         :milestone, submit, 2026-05-31 21:00, 180m
+    GPS 현재 위치 기반 필터         :crit, gps,      2026-05-31 10:00, 120m
+    Web Share API 공유 기능         :share,          2026-05-31 12:00, 90m
+    UI 완성도 & 애니메이션          :ui,             2026-05-31 14:00, 180m
+    통합 테스트 & 버그 수정         :test2,          2026-05-31 17:00, 180m
+    빌드 검증 & 최종 제출           :milestone, submit, 2026-05-31 21:00, 180m
 ```
 
 ---
 
 ## 3. 단계별 작업 상세
 
-### [금 14:00~15:30] 환경 세팅
+### [금 14:00~15:30] 환경 세팅 — 프론트엔드 (client/)
 
 ```
-□ npm create vite@latest rwr-mini-project -- --template react
-□ cd rwr-mini-project && npm install
-□ npm install react-router-dom
-□ 폴더 구조 생성 (src/components, pages, utils, data, context)
-□ GitHub 저장소 연결 (git init → git remote add origin)
+□ mkdir rwr-project && cd rwr-project
+□ npm create vite@latest client -- --template react
+□ cd client && npm install react-router-dom
+□ 폴더 구조 생성 (src/api, components, pages, utils, context)
 □ index.css — CSS 변수 정의 (컬러, 폰트, spacing)
 □ App.jsx — 기본 라우터 구조 설정
-□ 첫 커밋: "Initial project setup"
+□ client/.env.example — VITE_API_BASE_URL, VITE_KAKAO_MAP_KEY
+□ 첫 커밋: "chore: initial project structure"
 ```
 
 **완료 기준**: `npm run dev` 실행 후 브라우저에서 기본 화면 확인
 
 ---
 
-### [금 15:30~17:30] 메인 화면 UI
+### [금 15:30~17:00] 환경 세팅 — 백엔드 (server/)
+
+```
+□ cd ../server && npm init -y
+□ npm install express cors dotenv express-validator pg
+□ npm install -D nodemon
+□ 폴더 구조 생성 (src/routes, controllers, services, db, middleware)
+□ server/src/db/index.js — pg Pool 설정
+□ server/src/db/schema.sql — CREATE TABLE 3개 작성
+□ server/src/db/seed.sql — 샘플 코스 10개 INSERT 작성
+□ server/.env.example — DATABASE_URL, PORT, CORS_ORIGIN
+□ PostgreSQL 데이터베이스 생성: CREATE DATABASE rwr_db;
+□ 스키마 + 시드 실행 확인
+□ server.js + app.js — Express 기본 설정
+□ client/Dockerfile — 멀티 스테이지 기본 구조 (Node.js 빌드 → Nginx)
+□ server/Dockerfile — Node.js Express 실행 이미지 기본 구조
+□ docker-compose.yml — nginx·server·db 3개 컨테이너 정의 (기본 구조)
+□ nginx/nginx.conf — 정적 파일 서빙 + /api 리버스 프록시 설정
+□ .github/workflows/deploy.yml — GitHub Actions CI/CD 파이프라인 기본 구조
+□ 커밋: "chore: express server, postgresql, and docker setup"
+```
+
+**완료 기준**: `npm run dev` 실행 후 `GET /api/health` 200 응답 확인, courses 테이블 데이터 확인, `docker-compose build` 오류 없음
+
+---
+
+### [금 19:00~21:00] 메인 UI + 결과 화면
 
 ```
 □ Header.jsx — 타이틀, 뒤로 가기 버튼
@@ -118,81 +145,79 @@ gantt
 □ ConditionSelector.jsx — 3개 ConditionGroup 조합
 □ MainPage.jsx — 전체 레이아웃, useState로 조건 상태 관리
 □ 추천 버튼 — 3조건 미선택 시 비활성 처리
-□ 커밋: "feat: main page with condition selector"
+□ CourseCard.jsx — 코스명, 메타, 설명, 추천 이유
+□ ResultPage.jsx — API 결과 렌더링 + 다시 추천 버튼
+□ 커밋: "feat: main page and result page"
 ```
 
-**완료 기준**: 조건 3가지 선택 → 추천 버튼 활성화 동작 확인
+**완료 기준**: 조건 선택 → 추천 → 결과 카드 표시, 다시 추천 동작 확인
 
 ---
 
-### [금 17:30~19:30] 데이터 + 추천 로직
+### [금 17:00~19:00] 추천 API + 프론트엔드 연동
 
 ```
-□ src/data/routeData.js — 10개 코스 데이터 작성
-□ src/utils/routeUtils.js — getRandomRoute 함수
-□ App.jsx 또는 Context — selectedConditions 전역 상태 연결
-□ 추천 버튼 클릭 → getRandomRoute 호출 → ResultPage 이동
+□ coursesService.js — getRandomCourse(distance, time, type, exclude) DB 쿼리
+□ coursesController.js — 요청 파라미터 파싱 + 유효성 검사
+□ routes/courses.js — GET /api/courses/random, GET /api/courses/:id
+□ client/src/api/coursesApi.js — fetch 기반 API 호출 함수
+□ client/src/utils/userIdentity.js — getUserId() 익명 UUID 관리
+□ AppContext — selectedConditions 전역 상태
+□ 추천 버튼 클릭 → API 호출 → ResultPage 이동
 □ 빈 결과 케이스 처리
-□ 커밋: "feat: route data and recommendation logic"
+□ 커밋: "feat: courses api and recommendation flow"
 ```
 
-**완료 기준**: 조건 선택 후 추천 버튼 → 결과 화면으로 이동, 코스 객체 정상 반환 확인
+**완료 기준**: 조건 선택 → API 호출 → 결과 화면 이동, 코스 데이터 정상 반환 확인
 
 ---
 
-### [금 19:30~21:30] 추천 결과 화면
-
-```
-□ CourseCard.jsx — 코스명, 메타, 설명, 추천 이유, 액션 버튼
-□ ResultPage.jsx — CourseCard 렌더링 + 조건 요약 칩
-□ RecommendAgainButton.jsx — 다시 추천 버튼
-□ 다시 추천 로직 — excludeId 적용
-□ 커밋: "feat: result page with course card"
-```
-
-**완료 기준**: 결과 카드 표시, 다시 추천 버튼으로 다른 코스 표시 확인
-
----
-
-### [금 21:30~23:00] 상세 화면 1부
+### [금 21:00~23:00] 상세 화면 + 즐겨찾기 API 기초
 
 ```
 □ DetailPage.jsx — 코스 설명/이유/주의/팁 4개 섹션 레이아웃
 □ CourseInfo.jsx — 섹션 단위 컴포넌트
-□ 커밋: "feat: detail page structure"
+□ GET /api/courses/:id 라우트 연결 (서버)
+□ favoritesService.js — addFavorite, removeFavorite, getFavoritesByUser
+□ routes/favorites.js — GET/POST/DELETE /api/favorites 기초 구현
+□ client/src/api/favoritesApi.js — API 호출 함수
+□ 커밋: "feat: detail page and favorites api"
 ```
 
-**완료 기준**: 상세 화면 레이아웃 렌더링 확인
+**완료 기준**: 상세 화면 렌더링, 즐겨찾기 추가/해제 API 200 응답 확인
 
 ---
 
-### [토 09:00~10:30] 즐겨찾기 완성
+### [토 09:00~10:30] 즐겨찾기 + 이력 API 완성
 
 ```
-□ src/utils/storageUtils.js — getFavorites, toggleFavorite
-□ FavoriteButton.jsx — 상태에 따른 아이콘 변화
-□ AppContext — favorites 전역 상태
-□ FavoritesPage.jsx — 목록 + EmptyState
-□ 커밋: "feat: favorites with localStorage"
+□ FavoriteButton.jsx — API 연동 후 상태 변화
+□ AppContext — favoriteIds 전역 상태 (페이지 간 동기화)
+□ FavoritesPage.jsx — API에서 목록 로드 + EmptyState
+□ historyService.js — addHistory, getHistoryByUser
+□ routes/history.js — GET/POST /api/history
+□ client/src/api/historyApi.js
+□ 추천 발생 시 POST /api/history 자동 호출
+□ 커밋: "feat: favorites and history api complete"
 ```
 
-**완료 기준**: 즐겨찾기 저장 후 새로고침해도 유지, FavoritesPage 목록 확인
+**완료 기준**: 즐겨찾기 토글 → DB 반영 확인, 추천 후 이력 API 저장 확인
 
 ---
 
-### [토 10:30~12:00] 이력 + 네비게이션
+### [토 10:30~12:00] 네비게이션 + 프론트-백엔드 완전 통합
 
 ```
-□ storageUtils.js — addHistory, getHistory (최대 10개)
-□ 추천 발생 시 addHistory 자동 호출
-□ HistoryCard.jsx — 코스 정보 + 추천 시각
-□ HistoryPage.jsx — 이력 목록 + EmptyState
+□ HistoryCard.jsx — 코스 정보 + 추천 시각 표시
+□ HistoryPage.jsx — API에서 이력 로드 + EmptyState
 □ BottomTab.jsx — 홈/즐겨찾기/이력 탭
 □ React Router 전체 라우팅 연결
-□ 커밋: "feat: history and bottom navigation"
+□ API 에러 처리 — 로딩 상태, 에러 메시지 표시
+□ 공통 에러 처리 미들웨어 (server/src/middleware/errorHandler.js)
+□ 커밋: "feat: history page and full api integration"
 ```
 
-**완료 기준**: 3탭 전환 동작, 이력 최대 10개 제한 확인
+**완료 기준**: 3탭 전환 동작, 모든 API 연동 정상, 에러 상태 처리 확인
 
 ---
 
@@ -229,10 +254,10 @@ gantt
 ### [토 19:00~21:00] 코스 데이터 확장 (10개 → 20개)
 
 ```
-□ routeData.js — 기존 10개 + 신규 10개 코스 작성
+□ server/src/db/seed.sql — 신규 코스 10개 INSERT 추가 (lat/lng 좌표 포함)
 □ 조건 조합 커버리지 확인 (거리 3 × 시간 3 × 유형 3 = 27 조합 중 최소 18개 충족)
-□ 각 코스 lat/lng 좌표 추가 (카카오맵 연동용)
-□ 커밋: "data: expand course data to 20 routes"
+□ psql로 시드 재실행 및 데이터 확인
+□ 커밋: "data: expand course seed data to 20 routes"
 ```
 
 **완료 기준**: 모든 조건 조합에서 최소 1개 이상 추천 결과 반환
@@ -317,14 +342,17 @@ gantt
 
 ```
 □ npm run build 최종 확인 (오류 0개)
-□ README.md — 실행 방법, 기능 목록, 스크린샷 추가
+□ docker-compose build — 전체 이미지 빌드 오류 없음 확인
+□ Ubuntu VM에서 docker-compose up -d — 전체 스택 실행 확인
+□ GitHub Secrets 등록 (VM_SSH_KEY, VM_HOST, VM_USER, GHCR_TOKEN)
+□ main 브랜치 push → GitHub Actions 자동 배포 동작 확인
+□ README.md — 실행 방법 (로컈 개발 + Docker 배포), 기능 목록, 스크린샷 추가
 □ GitHub 저장소 Public 설정 확인
-□ git push (dev 브랜치)
 □ 제출 커밋: "chore: final submission v1.0"
 □ 제출 링크/URL 최종 확인
 ```
 
-**완료 기준**: 빌드 성공, GitHub Public 저장소 접근 가능, 제출 완료
+**완료 기준**: 빌드 성공, Docker 이미지 빌드 성공, Ubuntu VM 배포 동작 확인, GitHub Actions CI/CD 자동 배포 확인, GitHub Public 저장소 접근 가능
 
 ---
 
@@ -402,6 +430,9 @@ quadrantChart
 □ NFR-13    npm run build 오류 없음
 □ NFR-14    GitHub Public 저장소 Push 완료
 □ NFR-15    README 실행 방법 포함
+□ DEPLOY-01  Docker 이미지 빌드 성공 (client + server)
+□ DEPLOY-02  docker-compose up -d 전체 스택 실행 성공 (Ubuntu VM)
+□ DEPLOY-03  GitHub Actions CI/CD 자동 배포 동작 확인
 ```
 
 ---

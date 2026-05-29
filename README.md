@@ -66,14 +66,48 @@ graph LR
 
 ## 기술 스택
 
-| 분류          | 기술               |
-| ------------- | ------------------ |
-| UI 프레임워크 | React 18           |
-| 언어          | JavaScript (ES6+)  |
-| 스타일링      | CSS (Flexbox/Grid) |
-| 빌드 도구     | Vite 5             |
-| 데이터 저장   | localStorage       |
-| 버전 관리     | Git + GitHub       |
+| 분류         | 기술                               |
+| ------------ | ---------------------------------- |
+| 프론트엔드   | React 18 + Vite 5 (포트 5173)      |
+| 백엔드       | Node.js 20 + Express 4 (포트 3000) |
+| 데이터베이스 | PostgreSQL 16 (Docker Compose)     |
+| 컨테이너     | Docker Compose (개발 DB / 운영)    |
+| 웹 서버      | Nginx (SPA + `/api` 리버스 프록시) |
+| CI/CD        | GitHub Actions                     |
+| 언어         | JavaScript (ES6+)                  |
+| 버전 관리    | Git + GitHub                       |
+
+---
+
+## 로컬 개발 실행 방법
+
+> 사전 조건: Node.js 20+, npm 10+
+
+```powershell
+# 1. 프론트엔드 초기화 (최초 1회, "Ignore files and continue" 선택)
+npm create vite@latest client -- --template react
+cd client ; npm install react-router-dom ; cd ..
+
+# 2. 백엔드 의존성 설치
+cd server ; npm install ; cd ..
+
+# 3. 서버 환경변수 설정
+copy server\.env.example server\.env
+
+# 4. 개발 서버 실행 (각각 별도 터미널)
+cd server ; npm run dev   # Express → http://localhost:3000
+cd client ; npm run dev   # Vite   → http://localhost:5173
+
+# 5. (Docker Desktop 설치 후) PostgreSQL DB 실행
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+### 검증
+
+| 항목            | 명령어 / URL                            | 기대 응답          |
+| --------------- | --------------------------------------- | ------------------ |
+| 백엔드 헬스체크 | `curl http://localhost:3000/api/health` | `{"success":true}` |
+| 프론트엔드      | 브라우저에서 `http://localhost:5173`    | Vite 기본 화면     |
 
 ---
 

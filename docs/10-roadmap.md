@@ -29,8 +29,8 @@ timeline
             : 랜덤 코스 추천
             : 다시 추천
             : 코스 상세 화면
-            : 즐겨찾기 (localStorage)
-            : 최근 추천 이력
+            : 즐겨찾기 (PostgreSQL + 익명 UUID)
+            : 최근 추천 이력 (PostgreSQL + 익명 UUID)
             : 반응형 웹 (375~1280px)
             : 카카오맵 마커 표시 (P1)
             : GPS 위치 기반 필터 (도전)

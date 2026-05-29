@@ -2,6 +2,7 @@
 
 > **문서 유형**: 데이터 설계 / 기술 명세  
 > **작성일**: 2026.05.28  
+> **최종 수정일**: 2026.05.29 (PostgreSQL DB + REST API 구조로 전환)  
 > **관련 문서**: [요구사항 정의서](./03-requirements.md) | [기술 스택](./07-tech-stack.md)
 
 ---
@@ -9,206 +10,198 @@
 ## 목차
 
 1. [코스 데이터 모델](#1-코스-데이터-모델)
-2. [샘플 코스 데이터](#2-샘플-코스-데이터)
-3. [추천 로직 명세](#3-추천-로직-명세)
-4. [localStorage 데이터 구조](#4-localstorage-데이터-구조)
-5. [데이터 흐름 다이어그램](#5-데이터-흐름-다이어그램)
+2. [PostgreSQL DB 스키마](#2-postgresql-db-스키마)
+3. [샘플 코스 시드 데이터](#3-샘플-코스-시드-데이터)
+4. [REST API 명세](#4-rest-api-명세)
+5. [사용자 식별 구조 (익명 UUID)](#5-사용자-식별-구조-익명-uuid)
+6. [데이터 흐름 다이어그램](#6-데이터-흐름-다이어그램)
 
 ---
 
 ## 1. 코스 데이터 모델
 
-### 코스 객체 필드 명세
+### DB 테이블 관계 (ERD)
 
 ```mermaid
 erDiagram
-    COURSE {
-        string id PK "고유 식별자 (예: route-001)"
-        string title "코스 이름"
-        number distance "거리 (1 or 3 or 5)"
-        number time "소요 시간 분 (15 or 30 or 60)"
-        string type "운동 유형 (걷기 or 조깅 or 러닝)"
-        string mood "분위기 태그 (공원/강변/도심/숲길)"
-        string description "코스 설명 (1~2문장)"
-        string reason "추천 이유 (1문장)"
-        string caution "주의사항 (1~2문장)"
-        string tip "준비 팁 (1~2문장)"
-        boolean favorite "즐겨찾기 여부 (런타임 상태)"
+    COURSES {
+        varchar id PK "고유 식별자 (예: route-001)"
+        varchar title "코스 이름"
+        integer distance "거리 (1 or 3 or 5)"
+        integer time "소요 시간 분 (15 or 30 or 60)"
+        varchar type "운동 유형 (걷기 or 조깅 or 러닝)"
+        varchar mood "분위기 태그 (공원/강변/도심/숲길)"
+        text description "코스 설명"
+        text reason "추천 이유"
+        text caution "주의사항"
+        text tip "준비 팁"
+        timestamp created_at "생성 시각"
     }
 
-    HISTORY_ITEM {
-        string id "코스 ID (COURSE FK)"
-        string timestamp "추천 시각 (ISO 8601)"
-        string title "코스 이름 (캐시)"
-        number distance "거리 (캐시)"
-        number time "소요 시간 (캐시)"
-        string type "운동 유형 (캐시)"
+    FAVORITES {
+        serial id PK "자동 증가 PK"
+        varchar user_id "익명 사용자 UUID"
+        varchar course_id FK "코스 ID"
+        timestamp created_at "등록 시각"
     }
 
-    COURSE ||--o{ HISTORY_ITEM : "추천됨"
+    HISTORY {
+        serial id PK "자동 증가 PK"
+        varchar user_id "익명 사용자 UUID"
+        varchar course_id FK "코스 ID"
+        timestamp recommended_at "추천 시각"
+    }
+
+    COURSES ||--o{ FAVORITES : "즐겨찾기됨"
+    COURSES ||--o{ HISTORY : "추천됨"
 ```
 
-### 필드 타입 상세
+### courses 테이블 필드 상세
 
-| 필드명        | 타입     | 허용 값                                | 예시                  |
-| ------------- | -------- | -------------------------------------- | --------------------- |
-| `id`          | `string` | 형식: `route-NNN`                      | `"route-001"`         |
-| `title`       | `string` | 한국어 코스명                          | `"서울숲 둘레길"`     |
-| `distance`    | `number` | `1`, `3`, `5` (km)                     | `3`                   |
-| `time`        | `number` | `15`, `30`, `60` (분)                  | `30`                  |
-| `type`        | `string` | `"걷기"`, `"조깅"`, `"러닝"`           | `"조깅"`              |
-| `mood`        | `string` | `"공원"`, `"강변"`, `"도심"`, `"숲길"` | `"공원"`              |
-| `description` | `string` | 1~2문장 자유 텍스트                    | `"봄이면 벚꽃이..."`  |
-| `reason`      | `string` | 1문장 추천 이유                        | `"평지 위주로..."`    |
-| `caution`     | `string` | 1~2문장 주의사항                       | `"주말 오전 혼잡..."` |
-| `tip`         | `string` | 1~2문장 준비 팁                        | `"물 500ml 이상..."`  |
+| 컬럼명        | DB 타입        | 허용 값                                | 예시                  |
+| ------------- | -------------- | -------------------------------------- | --------------------- |
+| `id`          | `VARCHAR(20)`  | 형식: `route-NNN`                      | `'route-001'`         |
+| `title`       | `VARCHAR(100)` | 한국어 코스명                          | `'서울숲 둘레길'`     |
+| `distance`    | `INTEGER`      | `1`, `3`, `5` (km)                     | `3`                   |
+| `time`        | `INTEGER`      | `15`, `30`, `60` (분)                  | `30`                  |
+| `type`        | `VARCHAR(20)`  | `'걷기'`, `'조깅'`, `'러닝'`           | `'조깅'`              |
+| `mood`        | `VARCHAR(20)`  | `'공원'`, `'강변'`, `'도심'`, `'숲길'` | `'공원'`              |
+| `description` | `TEXT`         | 1~2문장 자유 텍스트                    | `'봄이면 벚꽃이...'`  |
+| `reason`      | `TEXT`         | 1문장 추천 이유                        | `'평지 위주로...'`    |
+| `caution`     | `TEXT`         | 1~2문장 주의사항                       | `'주말 오전 혼잡...'` |
+| `tip`         | `TEXT`         | 1~2문장 준비 팁                        | `'물 500ml 이상...'`  |
+| `created_at`  | `TIMESTAMP`    | DEFAULT NOW()                          | -                     |
+
+### favorites / history 테이블 필드 상세
+
+| 컬럼명           | 테이블    | DB 타입       | 설명                                 |
+| ---------------- | --------- | ------------- | ------------------------------------ |
+| `id`             | 공통      | `SERIAL PK`   | 자동 증가                            |
+| `user_id`        | 공통      | `VARCHAR(36)` | 익명 UUID (브라우저 첫 방문 시 생성) |
+| `course_id`      | 공통      | `VARCHAR(20)` | courses.id 참조 (FK)                 |
+| `created_at`     | favorites | `TIMESTAMP`   | 즐겨찾기 등록 시각                   |
+| `recommended_at` | history   | `TIMESTAMP`   | 추천 발생 시각                       |
+
+> **UNIQUE 제약**: `favorites(user_id, course_id)` 조합은 중복 불가
 
 ---
 
-## 2. 샘플 코스 데이터
+## 2. PostgreSQL DB 스키마
 
-### routeData.js 전체
+### schema.sql
 
-```js
-// src/data/routeData.js
+```sql
+-- server/src/db/schema.sql
 
-export const routeList = [
-  {
-    id: "route-001",
-    title: "서울숲 둘레길",
-    distance: 3,
-    time: 30,
-    type: "조깅",
-    mood: "공원",
-    description:
-      "봄이면 벚꽃이 만개하는 서울숲 외곽 트랙 코스입니다. 평탄한 지형으로 꾸준한 페이스를 유지하기 좋습니다.",
-    reason: "평지 위주로 관절 부담이 적어 초보 조거에게 적합합니다.",
-    caution:
-      "주말 오전에는 이용객이 많아 혼잡합니다. 이어폰 착용 시 주변을 주의하세요.",
-    tip: "물 500ml 이상 준비를 권장합니다. 트레킹화 또는 러닝화를 착용하세요.",
-  },
-  {
-    id: "route-002",
-    title: "한강 반포 구간",
-    distance: 5,
-    time: 60,
-    type: "러닝",
-    mood: "강변",
-    description:
-      "한강 반포지구에서 잠원지구까지 이어지는 강변 러닝 코스입니다. 탁 트인 강 뷰가 인상적입니다.",
-    reason: "강변의 시원한 바람 속에서 장거리 러닝 훈련에 최적인 코스입니다.",
-    caution: "강풍이 강할 수 있으니 가벼운 바람막이를 준비하세요.",
-    tip: "일출·일몰 시간대에 달리면 경치가 특히 아름답습니다.",
-  },
-  {
-    id: "route-003",
-    title: "북악산 자락길",
-    distance: 5,
-    time: 60,
-    type: "걷기",
-    mood: "숲길",
-    description:
-      "북악산 중턱을 따라 이어지는 흙길 산책로입니다. 도심 속에서 숲의 공기를 느낄 수 있습니다.",
-    reason: "경사가 완만하고 나무 그늘이 많아 여름철 무더위에도 쾌적합니다.",
-    caution: "일부 구간이 가파르니 등산화 착용을 권장합니다.",
-    tip: "선크림과 모기 기피제를 챙기세요. 화장실은 입구에만 있습니다.",
-  },
-  {
-    id: "route-004",
-    title: "여의도 한강공원 순환",
-    distance: 3,
-    time: 30,
-    type: "러닝",
-    mood: "강변",
-    description:
-      "여의도 한강공원을 한 바퀴 돌아오는 평탄한 러닝 코스입니다. 야경이 아름다워 저녁 러닝에 특히 인기입니다.",
-    reason: "조명이 잘 되어 있어 야간 러닝도 안전하게 즐길 수 있습니다.",
-    caution: "벚꽃 시즌에는 인파가 매우 많으니 주의하세요.",
-    tip: "주차 공간이 부족하니 대중교통 이용을 권장합니다.",
-  },
-  {
-    id: "route-005",
-    title: "월드컵공원 노을길",
-    distance: 3,
-    time: 30,
-    type: "걷기",
-    mood: "공원",
-    description:
-      "노을공원과 하늘공원을 잇는 완만한 산책로입니다. 석양 무렵 노을이 아름답기로 유명합니다.",
-    reason: "평탄한 포장길로 유모차나 노약자도 편하게 이용 가능합니다.",
-    caution: "해 질 녘 이후에는 조명이 부족한 구간이 있으니 손전등을 챙기세요.",
-    tip: "노을 시간대(오후 5~7시)에 방문하면 경치가 가장 좋습니다.",
-  },
-  {
-    id: "route-006",
-    title: "남산 순환 산책로",
-    distance: 5,
-    time: 60,
-    type: "걷기",
-    mood: "숲길",
-    description:
-      "남산을 한 바퀴 도는 전통적인 서울 산책 코스입니다. N서울타워를 바라보며 걷는 경험이 색다릅니다.",
-    reason: "도심 한복판에서 숲길 트레킹을 즐길 수 있는 서울 대표 코스입니다.",
-    caution: "경사 구간이 있으니 편한 신발을 착용하세요.",
-    tip: "N서울타워에서 서울 전경을 감상하는 것도 추천합니다.",
-  },
-  {
-    id: "route-007",
-    title: "청계천 산책길",
-    distance: 1,
-    time: 15,
-    type: "걷기",
-    mood: "도심",
-    description:
-      "광화문에서 청계천을 따라 걷는 도심 속 힐링 코스입니다. 물소리와 도심의 정취를 동시에 느낄 수 있습니다.",
-    reason: "짧고 간단하게 기분 전환이 필요할 때 딱 맞는 도심 산책 코스입니다.",
-    caution: "계단이 많으니 무릎이 좋지 않다면 평지 구간만 이용하세요.",
-    tip: "저녁 조명이 켜지는 시간대(7~9시)에 분위기가 가장 좋습니다.",
-  },
-  {
-    id: "route-008",
-    title: "올림픽공원 들길",
-    distance: 1,
-    time: 15,
-    type: "조깅",
-    mood: "공원",
-    description:
-      "올림픽공원 내 넓은 잔디밭과 들길을 따라 가볍게 조깅하는 코스입니다. 도심 속 힐링 공간으로 사랑받습니다.",
-    reason:
-      "트랙이 아닌 잔디길 위 조깅으로 무릎 충격을 줄이면서 운동할 수 있습니다.",
-    caution: "잔디 구간은 비 온 후 미끄러울 수 있으니 날씨를 확인하세요.",
-    tip: "9호선 올림픽공원역과 5호선 올림픽공원역 모두 근접합니다.",
-  },
-  {
-    id: "route-009",
-    title: "뚝섬 한강공원 코스",
-    distance: 3,
-    time: 30,
-    type: "걷기",
-    mood: "강변",
-    description:
-      "뚝섬 한강공원을 따라 걷는 가족 친화적 산책 코스입니다. 분수대와 어린이 놀이 공간이 있어 활기차고 즐거운 분위기입니다.",
-    reason:
-      "평탄하고 넓은 인도로 안전하며, 각종 편의시설이 잘 갖춰져 있습니다.",
-    caution: "자전거 전용 도로와 보행 구간을 혼동하지 않도록 주의하세요.",
-    tip: "편의점과 카페가 공원 내에 있어 간식을 챙기기 편합니다.",
-  },
-  {
-    id: "route-010",
-    title: "수락산 입구 둘레길",
-    distance: 5,
-    time: 60,
-    type: "조깅",
-    mood: "숲길",
-    description:
-      "수락산 입구를 따라 이어지는 완만한 산 아래 둘레길입니다. 도시에서 벗어나 자연 속에서 조깅을 즐길 수 있습니다.",
-    reason:
-      "경사가 낮은 편이라 산을 좋아하지만 격한 운동은 피하고 싶은 분에게 추천합니다.",
-    caution: "산길이므로 날이 어두워진 뒤에는 입산을 자제하세요.",
-    tip: "등산용 스틱이 있으면 하산 시 무릎 보호에 도움이 됩니다.",
-  },
-];
+-- 코스 테이블
+CREATE TABLE IF NOT EXISTS courses (
+  id           VARCHAR(20)  PRIMARY KEY,
+  title        VARCHAR(100) NOT NULL,
+  distance     INTEGER      NOT NULL CHECK (distance IN (1, 3, 5)),
+  time         INTEGER      NOT NULL CHECK (time IN (15, 30, 60)),
+  type         VARCHAR(20)  NOT NULL CHECK (type IN ('걷기', '조깅', '러닝')),
+  mood         VARCHAR(20)  NOT NULL CHECK (mood IN ('공원', '강변', '도심', '숲길')),
+  description  TEXT         NOT NULL,
+  reason       TEXT         NOT NULL,
+  caution      TEXT         NOT NULL,
+  tip          TEXT         NOT NULL,
+  created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+-- 즐겨찾기 테이블
+CREATE TABLE IF NOT EXISTS favorites (
+  id         SERIAL       PRIMARY KEY,
+  user_id    VARCHAR(36)  NOT NULL,
+  course_id  VARCHAR(20)  NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  created_at TIMESTAMP    NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, course_id)
+);
+
+-- 추천 이력 테이블
+CREATE TABLE IF NOT EXISTS history (
+  id               SERIAL      PRIMARY KEY,
+  user_id          VARCHAR(36) NOT NULL,
+  course_id        VARCHAR(20) NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  recommended_at   TIMESTAMP   NOT NULL DEFAULT NOW()
+);
+
+-- 조회 성능을 위한 인덱스
+CREATE INDEX IF NOT EXISTS idx_courses_filter    ON courses(distance, time, type);
+CREATE INDEX IF NOT EXISTS idx_favorites_user    ON favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_history_user_time ON history(user_id, recommended_at DESC);
 ```
+
+---
+
+## 3. 샘플 코스 시드 데이터
+
+> 기존 `routeData.js` 정적 배열 데이터를 `seed.sql` INSERT 문으로 변환합니다.
+
+### seed.sql 전체
+
+````sql
+-- server/src/db/seed.sql
+
+INSERT INTO courses (id, title, distance, time, type, mood, description, reason, caution, tip) VALUES
+
+```sql
+('route-001', '서울숲 둘레길', 3, 30, '조깅', '공원',
+  '봄이면 벚꽃이 만개하는 서울숲 외곽 트랙 코스입니다. 평탄한 지형으로 꾸준한 페이스를 유지하기 좋습니다.',
+  '평지 위주로 관절 부담이 적어 초보 조거에게 적합합니다.',
+  '주말 오전에는 이용객이 많아 혼잡합니다. 이어폰 착용 시 주변을 주의하세요.',
+  '물 500ml 이상 준비를 권장합니다. 트레킹화 또는 러닝화를 착용하세요.'),
+
+('route-002', '한강 반포 구간', 5, 60, '러닝', '강변',
+  '한강 반포지구에서 잠원지구까지 이어지는 강변 러닝 코스입니다. 탁 트인 강 뷰가 인상적입니다.',
+  '강변의 시원한 바람 속에서 장거리 러닝 훈련에 최적인 코스입니다.',
+  '강풍이 강할 수 있으니 가벼운 바람막이를 준비하세요.',
+  '일출·일몰 시간대에 달리면 경치가 특히 아름답습니다.'),
+('route-003', '북악산 자락길', 5, 60, '걷기', '숲길',
+  '북악산 중턱을 따라 이어지는 흙길 산책로입니다. 도심 속에서 숲의 공기를 느낄 수 있습니다.',
+  '경사가 완만하고 나무 그늘이 많아 여름철 무더위에도 쾌적합니다.',
+  '일부 구간이 가파르니 등산화 착용을 권장합니다.',
+  '선크림과 모기 기피제를 챙기세요. 화장실은 입구에만 있습니다.'),
+('route-004', '여의도 한강공원 순환', 3, 30, '러닝', '강변',
+  '여의도 한강공원을 한 바퀴 돌아오는 평탄한 러닝 코스입니다. 야경이 아름다워 저녁 러닝에 특히 인기입니다.',
+  '조명이 잘 되어 있어 야간 러닝도 안전하게 즐길 수 있습니다.',
+  '벚꽃 시즌에는 인파가 매우 많으니 주의하세요.',
+  '주차 공간이 부족하니 대중교통 이용을 권장합니다.'),
+('route-005', '월드컵공원 노을길', 3, 30, '걷기', '공원',
+  '노을공원과 하늘공원을 잇는 완만한 산책로입니다. 석양 무렵 노을이 아름답기로 유명합니다.',
+  '평탄한 포장길로 유모차나 노약자도 편하게 이용 가능합니다.',
+  '해 질 녘 이후에는 조명이 부족한 구간이 있으니 손전등을 챙기세요.',
+  '노을 시간대(오후 5~7시)에 방문하면 경치가 가장 좋습니다.'),
+('route-006', '남산 순환 산책로', 5, 60, '걷기', '숲길',
+  '남산을 한 바퀴 도는 전통적인 서울 산책 코스입니다. N서울타워를 바라보며 걷는 경험이 색다릅니다.',
+  '도심 한복판에서 숲길 트레킹을 즐길 수 있는 서울 대표 코스입니다.',
+  '경사 구간이 있으니 편한 신발을 착용하세요.',
+  'N서울타워에서 서울 전경을 감상하는 것도 추천합니다.'),
+
+('route-007', '청계천 산책길', 1, 15, '걷기', '도심',
+  '광화문에서 청계천을 따라 걷는 도심 속 힐링 코스입니다. 물소리와 도심의 정취를 동시에 느낄 수 있습니다.',
+  '짧고 간단하게 기분 전환이 필요할 때 딱 맞는 도심 산책 코스입니다.',
+  '계단이 많으니 무릎이 좋지 않다면 평지 구간만 이용하세요.',
+  '저녁 조명이 켜지는 시간대(7~9시)에 분위기가 가장 좋습니다.'),
+('route-008', '올림픽공원 들길', 1, 15, '조깅', '공원',
+  '올림픽공원 내 넓은 잔디밭과 들길을 따라 가볍게 조깅하는 코스입니다. 도심 속 힐링 공간으로 사랑받습니다.',
+  '트랙이 아닌 잔디길 위 조깅으로 무릎 충격을 줄이면서 운동할 수 있습니다.',
+  '잔디 구간은 비 온 후 미끄러울 수 있으니 날씨를 확인하세요.',
+  '9호선 올림픽공원역과 5호선 올림픽공원역 모두 근접합니다.'),
+('route-009', '뚝섬 한강공원 코스', 3, 30, '걷기', '강변',
+  '뚝섬 한강공원을 따라 걷는 가족 친화적 산책 코스입니다. 분수대와 어린이 놀이 공간이 있어 활기차고 즐거운 분위기입니다.',
+  '평탄하고 넓은 인도로 안전하며, 각종 편의시설이 잘 갖춰져 있습니다.',
+  '자전거 전용 도로와 보행 구간을 혼동하지 않도록 주의하세요.',
+  '편의점과 카페가 공원 내에 있어 간식을 챙기기 편합니다.'),
+
+('route-010', '수락산 입구 둘레길', 5, 60, '조깅', '숲길',
+  '수락산 입구를 따라 이어지는 완만한 산 아래 둘레길입니다. 도시에서 벗어나 자연 속에서 조깅을 즐길 수 있습니다.',
+  '경사가 낮은 편이라 산을 좋아하지만 격한 운동은 피하고 싶은 분에게 추천합니다.',
+  '산길이므로 날이 어두워진 뒤에는 입산을 자제하세요.',
+  '등산용 스틱이 있으면 하산 시 무릎 보호에 도움이 됩니다.')
+ON CONFLICT (id) DO NOTHING;
+````
+
+````
 
 ### 코스 데이터 요약표
 
@@ -227,60 +220,112 @@ export const routeList = [
 
 ---
 
-## 3. 추천 로직 명세
+## 4. REST API 명세
 
-### getRandomRoute 함수 명세
+> Base URL: `http://localhost:3000/api`
 
-```js
-// src/utils/routeUtils.js
+### 응답 형식 공통 규칙
 
-/**
- * 조건에 맞는 코스를 랜덤으로 반환합니다.
- * @param {Object} conditions - 선택된 조건
- * @param {number} conditions.distance - 거리 (1 | 3 | 5)
- * @param {number} conditions.time    - 시간 (15 | 30 | 60)
- * @param {string} conditions.type    - 유형 ("걷기" | "조깅" | "러닝")
- * @param {string|null} excludeId     - 제외할 코스 ID (다시 추천 시)
- * @returns {Object|null} 코스 객체 또는 null (결과 없음)
- */
-export function getRandomRoute(conditions, excludeId = null) {
-  const { distance, time, type } = conditions;
+```json
+// 성공
+{ "success": true, "data": { ... } }
 
-  // 1단계: 조건 필터링
-  let filtered = routeList.filter(
-    (route) =>
-      route.distance === distance && route.time === time && route.type === type,
-  );
+// 실패
+{ "success": false, "message": "에러 설명" }
+````
 
-  // 2단계: 이전 코스 제외 (다시 추천)
-  if (excludeId && filtered.length > 1) {
-    filtered = filtered.filter((route) => route.id !== excludeId);
-  }
+---
 
-  // 3단계: 결과 없음 처리
-  if (filtered.length === 0) return null;
+### 코스 API
 
-  // 4단계: 랜덤 반환
-  const randomIndex = Math.floor(Math.random() * filtered.length);
-  return filtered[randomIndex];
-}
+#### `GET /courses` — 코스 목록 조회 (필터 지원)
+
+| 파라미터   | 타입      | 필수 | 허용값                 | 설명          |
+| ---------- | --------- | ---- | ---------------------- | ------------- |
+| `distance` | `integer` | 선택 | `1`, `3`, `5`          | 거리(km) 필터 |
+| `time`     | `integer` | 선택 | `15`, `30`, `60`       | 시간(분) 필터 |
+| `type`     | `string`  | 선택 | `걷기`, `조깅`, `러닝` | 유형 필터     |
+
+```
+GET /api/courses?distance=3&time=30&type=조깅
 ```
 
-### 필터링 로직 흐름
+#### `GET /courses/random` — 랜덤 코스 추천
 
-```mermaid
-flowchart TD
-    A[getRandomRoute 호출\n거리 + 시간 + 유형 + excludeId] --> B[routeList 전체에서\n3가지 조건 필터링]
-    B --> C{filtered.length > 0?}
-    C -- "아니오 (0개)" --> D[return null\n빈 결과 상태]
-    C -- "예" --> E{excludeId 있음\nAND length > 1?}
-    E -- "아니오" --> G[랜덤 인덱스 추출]
-    E -- "예" --> F[excludeId 제외 재필터링]
-    F --> G
-    G --> H[filtered\[randomIndex\] 반환]
+| 파라미터   | 타입      | 필수 | 설명                       |
+| ---------- | --------- | ---- | -------------------------- |
+| `distance` | `integer` | 필수 | 거리 조건                  |
+| `time`     | `integer` | 필수 | 시간 조건                  |
+| `type`     | `string`  | 필수 | 유형 조건                  |
+| `exclude`  | `string`  | 선택 | 제외할 코스 ID (다시 추천) |
+
+```
+GET /api/courses/random?distance=3&time=30&type=조깅&exclude=route-001
 ```
 
-### 조건 조합 커버리지
+#### `GET /courses/:id` — 코스 상세 조회
+
+```
+GET /api/courses/route-001
+```
+
+---
+
+### 즐겨찾기 API
+
+#### `GET /favorites` — 즐겨찾기 목록 조회
+
+| 파라미터 | 타입     | 필수 | 설명             |
+| -------- | -------- | ---- | ---------------- |
+| `userId` | `string` | 필수 | 익명 사용자 UUID |
+
+```
+GET /api/favorites?userId=550e8400-e29b-41d4-a716-446655440000
+```
+
+#### `POST /favorites` — 즐겨찾기 추가
+
+```json
+// Request Body
+{ "userId": "550e8400-e29b-41d4-a716-446655440000", "courseId": "route-001" }
+```
+
+#### `DELETE /favorites/:courseId` — 즐겨찾기 해제
+
+| 파라미터   | 위치        | 설명             |
+| ---------- | ----------- | ---------------- |
+| `courseId` | path param  | 코스 ID          |
+| `userId`   | query param | 익명 사용자 UUID |
+
+```
+DELETE /api/favorites/route-001?userId=550e8400-e29b-41d4-a716-446655440000
+```
+
+---
+
+### 이력 API
+
+#### `GET /history` — 추천 이력 조회
+
+| 파라미터 | 타입      | 필수 | 기본값 | 설명             |
+| -------- | --------- | ---- | ------ | ---------------- |
+| `userId` | `string`  | 필수 | -      | 익명 사용자 UUID |
+| `limit`  | `integer` | 선택 | `10`   | 최대 반환 건수   |
+
+```
+GET /api/history?userId=550e8400-e29b-41d4-a716-446655440000&limit=10
+```
+
+#### `POST /history` — 추천 이력 저장
+
+```json
+// Request Body
+{ "userId": "550e8400-e29b-41d4-a716-446655440000", "courseId": "route-001" }
+```
+
+---
+
+### 조건 조합 커버리지 (시드 데이터 기준)
 
 |    거리    | 시간 | 유형 |     해당 코스 수     |
 | :--------: | :--: | :--: | :------------------: |
@@ -298,130 +343,72 @@ flowchart TD
 
 ---
 
-## 4. localStorage 데이터 구조
+## 5. 사용자 식별 구조 (익명 UUID)
 
-### 키 설계
+### 왜 익명 UUID가 필요한가
 
-| localStorage 키 | 값 타입              | 설명                       |
-| --------------- | -------------------- | -------------------------- |
-| `rwr_favorites` | `string` (JSON 배열) | 즐겨찾기 코스 ID 배열      |
-| `rwr_history`   | `string` (JSON 배열) | 최근 추천 이력 (최대 10개) |
+이 프로젝트는 회원 가입/로그인 없이도 즐겨찾기와 이력을 사용자별로 저장해야 합니다.  
+브라우저 첫 방문 시 UUID를 생성해 localStorage에 저장하고, 모든 API 요청의 `userId`로 사용합니다.
 
-### rwr_favorites 구조
+### localStorage 키 설계
 
-```json
-// rwr_favorites
-["route-001", "route-006", "route-009"]
-```
+| localStorage 키 | 값 타입  | 설명                                          |
+| --------------- | -------- | --------------------------------------------- |
+| `rwr_user_id`   | `string` | 익명 UUID (첫 방문 시 생성, 이후 계속 재사용) |
 
-> 코스 ID만 저장 → 실제 코스 상세는 routeList에서 ID로 조회
-
-### rwr_history 구조
-
-```json
-// rwr_history
-[
-  {
-    "id": "route-001",
-    "title": "서울숲 둘레길",
-    "distance": 3,
-    "time": 30,
-    "type": "조깅",
-    "timestamp": "2026-05-28T08:32:00.000Z"
-  },
-  {
-    "id": "route-004",
-    "title": "여의도 한강공원 순환",
-    "distance": 3,
-    "time": 30,
-    "type": "러닝",
-    "timestamp": "2026-05-27T19:15:00.000Z"
-  }
-]
-```
-
-> 최신 항목이 배열 앞에 위치 (index 0 = 가장 최근)
-
-### localStorage 유틸리티 함수 명세
+### userIdentity.js 명세
 
 ```js
-// src/utils/storageUtils.js
+// client/src/utils/userIdentity.js
 
-const FAVORITES_KEY = "rwr_favorites";
-const HISTORY_KEY = "rwr_history";
-const MAX_HISTORY = 10;
+const USER_ID_KEY = "rwr_user_id";
 
-/** 즐겨찾기 목록 반환 */
-export function getFavorites() {
-  try {
-    return JSON.parse(localStorage.getItem(FAVORITES_KEY)) ?? [];
-  } catch {
-    return [];
+/**
+ * 익명 사용자 ID를 반환합니다.
+ * localStorage에 없으면 UUID를 새로 생성해 저장합니다.
+ * @returns {string} UUID
+ */
+export function getUserId() {
+  let userId = localStorage.getItem(USER_ID_KEY);
+  if (!userId) {
+    userId = crypto.randomUUID(); // 브라우저 내장 API (ES2022)
+    localStorage.setItem(USER_ID_KEY, userId);
   }
-}
-
-/** 즐겨찾기 토글 (없으면 추가, 있으면 제거) */
-export function toggleFavorite(courseId) {
-  const list = getFavorites();
-  const idx = list.indexOf(courseId);
-  const next =
-    idx === -1 ? [...list, courseId] : list.filter((id) => id !== courseId);
-  try {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
-  } catch {}
-  return next;
-}
-
-/** 이력 목록 반환 */
-export function getHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY)) ?? [];
-  } catch {
-    return [];
-  }
-}
-
-/** 이력에 코스 추가 (최대 10개) */
-export function addHistory(course) {
-  const item = {
-    id: course.id,
-    title: course.title,
-    distance: course.distance,
-    time: course.time,
-    type: course.type,
-    timestamp: new Date().toISOString(),
-  };
-  const list = [item, ...getHistory()].slice(0, MAX_HISTORY);
-  try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
-  } catch {}
-  return list;
+  return userId;
 }
 ```
+
+### 보안 주의사항
+
+- 이 UUID는 인증 수단이 아닙니다. 다른 기기에서는 다른 UUID가 생성됩니다.
+- localStorage 초기화 시 즐겨찾기/이력이 새 UUID로 분리됩니다.
+- MVP 범위에서는 이 수준의 식별로 충분합니다. 실제 인증이 필요하면 별도 로그인 기능 추가가 필요합니다.
+- `userId`는 서버에서 UUID 형식 검증(`/^[0-9a-f-]{36}$/`)을 수행합니다.
 
 ---
 
-## 5. 데이터 흐름 다이어그램
+## 6. 데이터 흐름 다이어그램
 
 ```mermaid
 flowchart TD
-    subgraph 입력
+    subgraph 클라이언트
+        LS[localStorage\nrwr_user_id]
         UI[조건 선택 UI]
+        UUID[getUserId()]
     end
 
-    subgraph 로직층
-        Filter[getRandomRoute\n조건 필터링 + 랜덤]
-        StoreFav[toggleFavorite\n즐겨찾기 토글]
-        StoreHist[addHistory\n이력 저장]
+    subgraph Express API
+        RC[GET /courses/random]
+        FC[POST/DELETE /favorites]
+        HC[POST /history]
+        FG[GET /favorites]
+        HG[GET /history]
     end
 
-    subgraph 데이터 소스
-        RouteData[routeData.js\n정적 코스 배열]
-    end
-
-    subgraph 저장소
-        LS_FAV[localStorage\nrwr_favorites]
-        LS_HIST[localStorage\nrwr_history]
+    subgraph PostgreSQL
+        CT[(courses)]
+        FT[(favorites)]
+        HT[(history)]
     end
 
     subgraph 화면
@@ -431,15 +418,19 @@ flowchart TD
         HistPage[이력 화면]
     end
 
-    UI --> Filter
-    RouteData --> Filter
-    Filter --> Result
-    Filter --> StoreHist
-    StoreHist --> LS_HIST
-    Result --> StoreFav
-    StoreFav --> LS_FAV
-    LS_FAV --> FavPage
-    LS_HIST --> HistPage
+    LS --> UUID
+    UUID -- userId 포함 --> RC
+    UI --> RC
+    RC --> CT
+    CT --> Result
+    Result --> HC
+    HC --> HT
+    Result --> FC
+    FC --> FT
+    FG -- userId --> FT
+    FT --> FavPage
+    HG -- userId --> HT
+    HT --> HistPage
     Result --> Detail
     FavPage --> Detail
     HistPage --> Detail
