@@ -11,7 +11,7 @@ export const TIME_OPTIONS = [
 ];
 
 export const TYPE_OPTIONS = [
-  { label: "걷기", value: "嫄룰린" },
-  { label: "조깅", value: "議곌퉭" },
-  { label: "산책", value: "?щ떇" },
+  { label: "걷기", value: "walk" },
+  { label: "조깅", value: "jogging" },
+  { label: "러닝", value: "running" },
 ];

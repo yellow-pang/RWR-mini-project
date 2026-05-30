@@ -1,5 +1,6 @@
 const { Router } = require("express");
 const { query, param } = require("express-validator");
+const { COURSE_TYPES } = require("../constants/courseValues");
 const coursesController = require("../controllers/coursesController");
 
 const router = Router();
@@ -28,8 +29,8 @@ router.get(
       .trim()
       .notEmpty()
       .withMessage("type은 필수입니다.")
-      .isIn(["걷기", "조깅", "러닝"])
-      .withMessage("type은 걷기, 조깅, 러닝 중 하나여야 합니다."),
+      .isIn(COURSE_TYPES)
+      .withMessage("이동 유형은 걷기, 조깅, 러닝 중 하나여야 합니다."),
     query("exclude")
       .optional()
       .trim()
