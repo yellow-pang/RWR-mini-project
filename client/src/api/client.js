@@ -1,5 +1,6 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+const API_PATH_PREFIX = "/api";
 
 const FALLBACK_MESSAGES = {
   400: "요청 값이 올바르지 않습니다. 입력한 조건을 다시 확인해 주세요.",
@@ -30,7 +31,13 @@ export function getFriendlyErrorMessage(error, fallback) {
 }
 
 export function buildUrl(path, params = {}) {
-  const url = new URL(`${API_BASE_URL}${path}`);
+  const baseUrl = API_BASE_URL.replace(/\/+$/, "");
+  const normalizedBaseUrl = baseUrl.endsWith(API_PATH_PREFIX)
+    ? baseUrl
+    : `${baseUrl}${API_PATH_PREFIX}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const url = new URL(`${normalizedBaseUrl}${normalizedPath}`);
+
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
       url.searchParams.set(key, value);
