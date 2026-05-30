@@ -1,57 +1,65 @@
-/* 하단 탭바 — 화면 고정 */
 .tab-bar {
-  position: fixed;
+  position: sticky;
+  right: 0;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 600px;
-  height: 60px;
+  left: 0;
+  z-index: 100;
   display: flex;
+  width: 100%;
+  min-height: 76px;
   align-items: center;
   justify-content: space-around;
-  background-color: var(--color-card);
-  border-top: 1px solid var(--color-border);
-  z-index: 100;
+  margin-top: auto;
+  padding: 10px 28px max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--color-border-light);
+  background-color: var(--overlay-nav);
+  backdrop-filter: blur(10px);
 }
 
 .tab-item {
   position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
   flex: 1;
-  padding: 8px 0;
-  text-decoration: none;
-  color: var(--color-text-sub);
-  font-size: 12px;
-  min-height: 44px; /* 터치 타겟 최소 44px */
+  min-height: 54px;
+  align-items: center;
   justify-content: center;
-  transition: color 0.15s;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 14px;
+  color: var(--color-text-sub);
+  text-decoration: none;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
 }
 
 .tab-item.active {
   color: var(--color-primary);
+  background-color: var(--overlay-shell-accent);
 }
 
-.tab-item.active::after {
+.tab-item.active::before {
   content: "";
   position: absolute;
   top: 0;
-  left: 25%;
-  right: 25%;
+  width: 42px;
   height: 3px;
+  border-radius: 999px;
   background-color: var(--color-primary);
-  border-radius: 0 0 3px 3px;
-}
-
-.tab-icon {
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
 }
 
 .tab-label {
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (min-width: 641px) {
+  .tab-bar {
+    align-self: center;
+    width: min(100%, 560px);
+    margin-bottom: 10px;
+    border: 1px solid var(--color-border-light);
+    border-radius: 18px;
+    box-shadow: var(--shadow-nav);
+  }
 }

@@ -8,6 +8,7 @@ import {
   TYPE_OPTIONS,
 } from "../constants/courseOptions";
 import { useCourse } from "../hooks/useCourse";
+import Icon from "../components/Icon";
 import {
   HISTORY_SAVE_FAILED_MESSAGE,
   saveHistoryQuietly,
@@ -69,13 +70,26 @@ function HomePage() {
 
   return (
     <div className="page home-page">
-      <h1 className="page-title">오늘의 코스</h1>
-      <p className="page-desc">
-        거리, 시간, 이동 유형을 선택하고 랜덤 코스를 추천받으세요.
-      </p>
+      <header className="home-header">
+        <span className="header-icon-button" aria-hidden="true">
+          <Icon name="menu" size={28} />
+        </span>
+        <div className="home-brand">
+          <span className="home-brand-title">RWR</span>
+          <span className="home-brand-sub">Run Walk Random</span>
+        </div>
+        <span className="header-icon-button" aria-hidden="true">
+          <Icon name="bell" size={27} />
+        </span>
+      </header>
+
+      <h1 className="home-title">오늘은 어디로 걸어볼까요?</h1>
 
       <section className="condition-section">
-        <h2 className="condition-title">거리</h2>
+        <h2 className="condition-title">
+          <Icon name="pin" size={28} className="icon-green" />
+          거리
+        </h2>
         <div className="chip-group">
           {DISTANCE_OPTIONS.map((opt) => (
             <button
@@ -90,7 +104,10 @@ function HomePage() {
       </section>
 
       <section className="condition-section">
-        <h2 className="condition-title">소요 시간</h2>
+        <h2 className="condition-title">
+          <Icon name="clock" size={28} className="icon-green" />
+          소요 시간
+        </h2>
         <div className="chip-group">
           {TIME_OPTIONS.map((opt) => (
             <button
@@ -105,14 +122,21 @@ function HomePage() {
       </section>
 
       <section className="condition-section">
-        <h2 className="condition-title">이동 유형</h2>
-        <div className="chip-group">
+        <h2 className="condition-title">
+          <Icon name="shoe" size={29} className="icon-green" />
+          운동 유형
+        </h2>
+        <div className="chip-group type-group">
           {TYPE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               className={`chip${conditions.type === opt.value ? " selected" : ""}`}
               onClick={() => handleSelect("type", opt.value)}
             >
+              <Icon
+                name={opt.value === "walk" ? "foot" : "runner"}
+                size={24}
+              />
               {opt.label}
             </button>
           ))}
@@ -127,13 +151,11 @@ function HomePage() {
         disabled={!allSelected || isLoading}
         onClick={handleRecommend}
       >
-        {isLoading ? "추천 중..." : "추천받기"}
+        {isLoading ? "추천 중..." : "랜덤 코스 추천받기!"}
       </button>
-      {allSelected && (
-        <button className="btn-reset" onClick={handleReset}>
-          초기화
-        </button>
-      )}
+      <button className="btn-reset" onClick={handleReset}>
+        초기화
+      </button>
     </div>
   );
 }

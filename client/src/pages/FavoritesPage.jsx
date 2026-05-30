@@ -3,6 +3,7 @@ import { getFriendlyErrorMessage } from "../api/client";
 import { fetchFavorites, removeFavorite } from "../api/favorites";
 import CourseCard from "../components/CourseCard";
 import EmptyState from "../components/EmptyState";
+import Icon from "../components/Icon";
 import { getUserId } from "../utils/userId";
 
 function FavoritesPage() {
@@ -46,7 +47,15 @@ function FavoritesPage() {
 
   return (
     <div className="page favorites-page">
-      <h1 className="page-title">즐겨찾기</h1>
+      <header className="page-header">
+        <span className="header-icon-button" aria-hidden="true">
+          <Icon name="menu" size={28} />
+        </span>
+        <h1 className="page-header-title">즐겨찾기</h1>
+        <span className="header-icon-button" aria-hidden="true">
+          <Icon name="star" size={25} />
+        </span>
+      </header>
 
       {message && <p className="form-error">{message}</p>}
       {isLoading ? (
