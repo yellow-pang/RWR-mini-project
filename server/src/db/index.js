@@ -1,7 +1,21 @@
 const { Pool } = require("pg");
+const { getRequiredEnv } = require("../config/env");
+
+const databaseUrl = getRequiredEnv("DATABASE_URL");
+let databasePassword;
+
+try {
+  databasePassword = new URL(databaseUrl).password;
+} catch {
+  throw new Error("[Config] DATABASE_URL must be a valid PostgreSQL URL.");
+}
+
+if (databasePassword.length === 0) {
+  throw new Error("[Config] DATABASE_URL must include a database password.");
+}
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: databaseUrl,
 });
 
 pool.on("error", (err) => {
