@@ -71,14 +71,14 @@ function HomePage() {
   return (
     <div className="page home-page">
       <header className="home-header">
-        <span className="header-icon-button" aria-hidden="true">
+        <span className="header-icon-static" aria-hidden="true">
           <Icon name="menu" size={28} />
         </span>
         <div className="home-brand">
           <span className="home-brand-title">RWR</span>
           <span className="home-brand-sub">Run Walk Random</span>
         </div>
-        <span className="header-icon-button" aria-hidden="true">
+        <span className="header-icon-static" aria-hidden="true">
           <Icon name="bell" size={27} />
         </span>
       </header>

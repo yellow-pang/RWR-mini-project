@@ -48,11 +48,11 @@ function FavoritesPage() {
   return (
     <div className="page favorites-page">
       <header className="page-header">
-        <span className="header-icon-button" aria-hidden="true">
+        <span className="header-icon-static" aria-hidden="true">
           <Icon name="menu" size={28} />
         </span>
         <h1 className="page-header-title">즐겨찾기</h1>
-        <span className="header-icon-button" aria-hidden="true">
+        <span className="header-icon-static" aria-hidden="true">
           <Icon name="star" size={25} />
         </span>
       </header>

@@ -79,11 +79,11 @@ function HistoryPage() {
   return (
     <div className="page history-page">
       <header className="page-header">
-        <span className="header-icon-button" aria-hidden="true">
+        <span className="header-icon-static" aria-hidden="true">
           <Icon name="menu" size={28} />
         </span>
         <h1 className="page-header-title">최근 추천 이력</h1>
-        <span className="header-icon-button" aria-hidden="true">
+        <span className="header-icon-static" aria-hidden="true">
           <Icon name="trash" size={25} />
         </span>
       </header>

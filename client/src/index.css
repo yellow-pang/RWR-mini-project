@@ -135,7 +135,8 @@ a {
 }
 
 .header-icon-button,
-.btn-back {
+.btn-back,
+.header-icon-static {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -153,6 +154,11 @@ a {
 .header-icon-button:hover,
 .btn-back:hover {
   background-color: var(--color-surface-muted);
+}
+
+.header-icon-static {
+  cursor: default;
+  color: var(--color-text-main);
 }
 
 .form-error,
