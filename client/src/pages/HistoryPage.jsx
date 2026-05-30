@@ -4,6 +4,7 @@ import { addFavorite, fetchFavorites, removeFavorite } from "../api/favorites";
 import { fetchHistory } from "../api/history";
 import CourseCard from "../components/CourseCard";
 import EmptyState from "../components/EmptyState";
+import Icon from "../components/Icon";
 import { getUserId } from "../utils/userId";
 
 function formatDate(value) {
@@ -77,7 +78,15 @@ function HistoryPage() {
 
   return (
     <div className="page history-page">
-      <h1 className="page-title">최근 추천</h1>
+      <header className="page-header">
+        <span className="header-icon-static" aria-hidden="true">
+          <Icon name="menu" size={28} />
+        </span>
+        <h1 className="page-header-title">최근 추천 이력</h1>
+        <span className="header-icon-static" aria-hidden="true">
+          <Icon name="trash" size={25} />
+        </span>
+      </header>
 
       {message && <p className="form-error">{message}</p>}
       {noticeMessage && <p className="form-notice">{noticeMessage}</p>}

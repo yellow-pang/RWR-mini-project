@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getFriendlyErrorMessage } from "../api/client";
 import { fetchRandomCourse } from "../api/courses";
 import CourseCard from "../components/CourseCard";
+import Icon from "../components/Icon";
 import { useCourse } from "../hooks/useCourse";
 import { useFavoriteStatus } from "../hooks/useFavoriteStatus";
 import { getTypeLabel } from "../utils/courseDisplay";
@@ -53,7 +54,14 @@ function ResultPage() {
   if (!course) {
     return (
       <div className="page result-page">
-        <h1 className="page-title">추천 코스</h1>
+        <header className="page-header">
+          <button className="btn-back" onClick={() => navigate("/")}>
+            <Icon name="back" size={30} />
+            뒤로
+          </button>
+          <h1 className="page-header-title">오늘의 코스 추천</h1>
+          <span />
+        </header>
         <p className="page-desc">아직 추천된 코스가 없습니다.</p>
         <button className="btn-primary" onClick={() => navigate("/")}>
           코스 추천받기
@@ -65,15 +73,26 @@ function ResultPage() {
   return (
     <div className="page result-page">
       <div className="result-header">
-        <button className="btn-back" onClick={() => navigate("/")}>
-          조건 변경
-        </button>
-        <h1 className="page-title">추천 코스</h1>
+        <header className="page-header">
+          <button className="btn-back" onClick={() => navigate("/")}>
+            <Icon name="back" size={30} />
+            조건 변경
+          </button>
+          <h1 className="page-header-title">오늘의 코스 추천</h1>
+          <span />
+        </header>
         {conditions.distance && (
           <div className="condition-badges">
-            <span className="condition-badge">{conditions.distance}km</span>
-            <span className="condition-badge">{conditions.time}분</span>
             <span className="condition-badge">
+              <Icon name="pin" size={24} className="icon-green" />
+              {conditions.distance}km
+            </span>
+            <span className="condition-badge">
+              <Icon name="clock" size={24} className="icon-green" />
+              {conditions.time}분
+            </span>
+            <span className="condition-badge">
+              <Icon name="runner" size={24} className="icon-green" />
               {getTypeLabel(conditions.type)}
             </span>
           </div>
@@ -91,6 +110,7 @@ function ResultPage() {
         course={course}
         isFavorite={favorite.isFavorite}
         onFavoriteToggle={favorite.toggleFavorite}
+        featured
       />
 
       <button

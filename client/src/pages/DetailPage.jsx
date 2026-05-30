@@ -3,6 +3,8 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { getFriendlyErrorMessage } from "../api/client";
 import { fetchCourseById } from "../api/courses";
 import CourseInfo from "../components/CourseInfo";
+import Icon from "../components/Icon";
+import MapPreview from "../components/MapPreview";
 import { useCourse } from "../hooks/useCourse";
 import { useFavoriteStatus } from "../hooks/useFavoriteStatus";
 import { getMoodLabel, getTypeLabel } from "../utils/courseDisplay";
@@ -65,18 +67,20 @@ function DetailPage() {
 
   return (
     <div className="page detail-page">
-      <div className="detail-header">
+      <header className="page-header detail-header">
         <button className="btn-back" onClick={() => navigate(-1)}>
+          <Icon name="back" size={30} />
           뒤로
         </button>
+        <h1 className="page-header-title">코스 상세</h1>
         <button
-          className={`favorite-btn${favorite.isFavorite ? " active" : ""}`}
+          className={`header-icon-button detail-heart${favorite.isFavorite ? " active" : ""}`}
           onClick={favorite.toggleFavorite}
           aria-label={favorite.isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
         >
-          {favorite.isFavorite ? "저장됨" : "저장"}
+          <Icon name="heart" size={29} filled={favorite.isFavorite} />
         </button>
-      </div>
+      </header>
 
       {message && <p className="form-error">{message}</p>}
       {favorite.message && <p className="form-error">{favorite.message}</p>}
@@ -84,21 +88,36 @@ function DetailPage() {
         <p className="form-notice">{favorite.noticeMessage}</p>
       )}
 
-      <div className="detail-title-area">
+      <MapPreview course={course} />
+
+      <section className="detail-title-area">
         <h1 className="page-title">{course.title}</h1>
         <div className="course-meta detail-meta">
-          <span className="course-badge">{course.distance}km</span>
-          <span className="course-badge">{course.time}분</span>
-          <span className="course-badge">{getTypeLabel(course.type)}</span>
+          <span className="detail-pill">
+            <Icon name="pin" size={20} className="icon-green" />
+            {course.distance}km
+          </span>
+          <span className="detail-pill">
+            <Icon name="clock" size={20} className="icon-green" />
+            {course.time}분
+          </span>
+          <span className="detail-pill">
+            <Icon name="runner" size={20} className="icon-green" />
+            {getTypeLabel(course.type)}
+          </span>
           {course.mood && (
-            <span className="course-badge mood">
+            <span className="detail-pill">
               {getMoodLabel(course.mood)}
             </span>
           )}
         </div>
-      </div>
+      </section>
 
       <CourseInfo course={course} />
+
+      <button className="btn-primary detail-recommend-btn" onClick={() => navigate("/")}>
+        다른 코스 추천받기
+      </button>
     </div>
   );
 }

@@ -1,39 +1,27 @@
 import { NavLink } from "react-router-dom";
+import Icon from "./Icon";
 import "./TabBar.css";
+
+const items = [
+  { to: "/", label: "홈", icon: "home", end: true },
+  { to: "/favorites", label: "즐겨찾기", icon: "star" },
+  { to: "/history", label: "이력", icon: "clock" },
+];
 
 function TabBar() {
   return (
     <nav className="tab-bar" aria-label="하단 탭 메뉴">
-      <NavLink
-        to="/"
-        end
-        className={({ isActive }) => `tab-item${isActive ? " active" : ""}`}
-      >
-        <span className="tab-icon" aria-hidden="true">
-          Home
-        </span>
-        <span className="tab-label">홈</span>
-      </NavLink>
-
-      <NavLink
-        to="/favorites"
-        className={({ isActive }) => `tab-item${isActive ? " active" : ""}`}
-      >
-        <span className="tab-icon" aria-hidden="true">
-          Save
-        </span>
-        <span className="tab-label">즐겨찾기</span>
-      </NavLink>
-
-      <NavLink
-        to="/history"
-        className={({ isActive }) => `tab-item${isActive ? " active" : ""}`}
-      >
-        <span className="tab-icon" aria-hidden="true">
-          Log
-        </span>
-        <span className="tab-label">최근</span>
-      </NavLink>
+      {items.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          end={item.end}
+          className={({ isActive }) => `tab-item${isActive ? " active" : ""}`}
+        >
+          <Icon name={item.icon} size={25} />
+          <span className="tab-label">{item.label}</span>
+        </NavLink>
+      ))}
     </nav>
   );
 }

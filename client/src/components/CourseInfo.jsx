@@ -1,10 +1,12 @@
 import "./CourseInfo.css";
+import Icon from "./Icon";
 
 function CourseInfo({ course }) {
   return (
     <div className="course-info">
       <div className="course-info-section">
         <div className="course-info-label">
+          <Icon name="info" size={24} filled />
           <span>코스 소개</span>
         </div>
         <p className="course-info-text">{course.description}</p>
@@ -12,6 +14,7 @@ function CourseInfo({ course }) {
 
       <div className="course-info-section">
         <div className="course-info-label">
+          <Icon name="star" size={24} filled />
           <span>추천 이유</span>
         </div>
         <p className="course-info-text">{course.reason}</p>
@@ -19,6 +22,7 @@ function CourseInfo({ course }) {
 
       <div className="course-info-section danger">
         <div className="course-info-label">
+          <Icon name="alert" size={24} filled />
           <span>주의사항</span>
         </div>
         <p className="course-info-text">{course.caution}</p>
@@ -26,7 +30,8 @@ function CourseInfo({ course }) {
 
       <div className="course-info-section">
         <div className="course-info-label">
-          <span>이용 팁</span>
+          <Icon name="info" size={24} />
+          <span>준비 팁</span>
         </div>
         <p className="course-info-text">{course.tip}</p>
       </div>
