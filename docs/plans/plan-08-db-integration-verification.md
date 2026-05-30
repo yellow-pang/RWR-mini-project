@@ -1,8 +1,11 @@
 # 작업계획서 - Step 08: DB 연동 및 데이터 검증
 
-> **상태**: 진행 예정  
+> **상태**: 일부 진행 완료  
 > **작성일**: 2026.05.29  
+> **최종 수정일**: 2026.05.30  
+> **브랜치**: `fix/course-type-encoding`  
 > **목적**: 실제 PostgreSQL 환경에서 데이터 저장/조회 흐름 검증
+> **관련 문서**: [step-08-db-integration-verification.md](../steps/step-08-db-integration-verification.md) | [pr-08-course-type-encoding.md](../pr/pr-08-course-type-encoding.md)
 
 ---
 
@@ -18,6 +21,8 @@
 - 즐겨찾기 추가/삭제가 `favorites` 테이블에 반영되는지
 - 프론트 화면에서 DB 데이터를 실제로 받아 표시하는지
 
+2026.05.30 기준으로 추가 확인된 문제는 이동 유형 `type` 값의 한글 인코딩 깨짐이다. 프론트엔드가 깨진 문자열을 API로 전달하면서 서버 검증에서 400 오류가 발생했으므로, 내부/API/DB 저장 값은 ASCII enum(`walk`, `jogging`, `running`)으로 통일하고 사용자 화면과 오류 메시지만 한국어로 표시하도록 보정했다.
+
 ---
 
 ## 2. 검증 대상
@@ -30,6 +35,7 @@
 | React Client | API 응답을 화면에 정상 표시하는지 |
 | 데이터 쓰기 | 즐겨찾기/최근 이력이 DB에 저장되는지 |
 | 데이터 읽기 | 저장된 즐겨찾기/최근 이력이 다시 조회되는지 |
+| 인코딩 안정성 | 이동 유형이 ASCII enum으로 요청/검증/조회되는지 |
 
 ---
 
@@ -103,7 +109,7 @@ Invoke-RestMethod http://localhost:3000/api/health
 PowerShell:
 
 ```powershell
-Invoke-RestMethod "http://localhost:3000/api/courses/random?distance=3&time=30&type=議곌퉭"
+Invoke-RestMethod "http://localhost:3000/api/courses/random?distance=3&time=30&type=jogging"
 ```
 
 기대 결과:
@@ -118,7 +124,7 @@ Invoke-RestMethod "http://localhost:3000/api/courses/random?distance=3&time=30&t
 
 주의:
 
-현재 서버 seed/검증값에 한글 인코딩 이슈가 남아 있어, API 요청의 `type` 값은 현재 서버가 허용하는 값과 맞아야 한다.
+API 요청의 `type` 값은 인코딩 문제를 줄이기 위해 `walk`, `jogging`, `running` 중 하나를 사용한다. 화면에는 클라이언트에서 걷기, 조깅, 러닝으로 변환해 표시한다.
 
 ---
 
@@ -238,7 +244,7 @@ SELECT * FROM history ORDER BY recommended_at DESC;
 
 | 위험 요소 | 설명 | 권장 대응 |
 | --- | --- | --- |
-| seed 데이터 인코딩 깨짐 | 현재 일부 서버 값이 깨진 문자열 기준 | DB 검증 후 seed 정상 한글화 여부 결정 |
+| 기존 DB type 값 혼재 | 기존 Docker 볼륨에는 한글 type, 신규 seed에는 ASCII type이 저장될 수 있음 | 서버 조회 호환 유지 후 실제 DB에서 추천 조회 확인 |
 | Docker 메모리 부족 | 로컬 환경에서 컨테이너 실행 실패 가능 | DB만 먼저 띄우고 server/client는 로컬 실행하는 대안 검토 |
 | CORS 설정 불일치 | client origin이 서버 `CORS_ORIGIN`에 없으면 실패 | `.env`의 `CORS_ORIGIN` 확인 |
 | DB 연결 정보 불일치 | server가 PostgreSQL host/port를 못 찾을 수 있음 | `server/.env`, compose service name 확인 |
@@ -255,7 +261,7 @@ SELECT * FROM history ORDER BY recommended_at DESC;
 - [ ] `DELETE /api/favorites/:courseId` 후 DB 삭제 확인
 - [ ] `POST /api/history` 후 DB 저장 확인
 - [ ] React 화면에서 DB 기반 추천/즐겨찾기/이력 표시 확인
-- [ ] seed 인코딩 이슈 처리 방향 결정
+- [x] seed 인코딩 이슈 처리 방향 결정: 내부/DB 값은 ASCII enum, 화면 표시는 한글
 
 ---
 

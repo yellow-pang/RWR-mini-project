@@ -1,4 +1,5 @@
 const db = require("../db");
+const { getCourseTypeQueryValues } = require("../constants/courseValues");
 
 /**
  * 조건에 맞는 코스 중 랜덤으로 1개 반환
@@ -11,11 +12,12 @@ const COURSE_COLUMNS = `
 `;
 
 exports.findRandom = async ({ distance, time, type, exclude }) => {
-  const values = [distance, time, type];
+  const typeValues = getCourseTypeQueryValues(type);
+  const values = [distance, time, typeValues];
   let sql = `
     SELECT ${COURSE_COLUMNS}
     FROM courses
-    WHERE distance = $1 AND time = $2 AND type = $3
+    WHERE distance = $1 AND time = $2 AND type = ANY($3)
   `;
 
   if (exclude) {
