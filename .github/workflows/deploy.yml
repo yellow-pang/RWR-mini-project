@@ -9,6 +9,7 @@ on:
 # Settings → Secrets and variables → Actions → New repository secret
 #   ENV_FILE : 로컬 .env 파일 전체 내용을 그대로 붙여넣기
 #              (변수가 추가·변경되어도 deploy.yml 수정 없이 Secret 값만 업데이트)
+#              ORS_API_KEY 같은 서버 전용 키도 ENV_FILE에 포함해야 함
 
 jobs:
   deploy:
