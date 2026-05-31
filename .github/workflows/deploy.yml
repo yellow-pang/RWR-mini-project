@@ -7,13 +7,8 @@ on:
 
 # ── GitHub Secrets 등록 필요 항목 ─────────────────────────────────────────────
 # Settings → Secrets and variables → Actions → New repository secret
-#   NGINX_PORT         : 8090
-#   NODE_ENV           : production
-#   CORS_ORIGIN        : https://rwr.yourdomain.com
-#   POSTGRES_USER      : rwr_user
-#   POSTGRES_PASSWORD  : (강력한 비밀번호 — $, & 등 특수문자 제외 권장)
-#   POSTGRES_DB        : rwr_db
-#   VITE_KAKAO_MAP_KEY : 카카오맵 JS API 키 (없으면 빈 값)
+#   ENV_FILE : 로컬 .env 파일 전체 내용을 그대로 붙여넣기
+#              (변수가 추가·변경되어도 deploy.yml 수정 없이 Secret 값만 업데이트)
 
 jobs:
   deploy:
@@ -26,18 +21,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. 루트 .env 생성 (GitHub Secrets → 파일) ──────────────
-      # ⚠️ 비밀번호 특수문자 안전 처리: printf '%s\n' 방식 사용
-      # echo "VAR=$VALUE" 방식은 $, &, " 등 특수문자에서 파싱 오류 발생 가능
-      - name: Create .env from GitHub Secrets
-        run: |
-          printf 'NGINX_PORT=%s\n'         "${{ secrets.NGINX_PORT }}"         >  .env
-          printf 'NODE_ENV=%s\n'           "${{ secrets.NODE_ENV }}"            >> .env
-          printf 'CORS_ORIGIN=%s\n'        "${{ secrets.CORS_ORIGIN }}"         >> .env
-          printf 'POSTGRES_USER=%s\n'      "${{ secrets.POSTGRES_USER }}"       >> .env
-          printf 'POSTGRES_PASSWORD=%s\n'  "${{ secrets.POSTGRES_PASSWORD }}"   >> .env
-          printf 'POSTGRES_DB=%s\n'        "${{ secrets.POSTGRES_DB }}"         >> .env
-          printf 'VITE_KAKAO_MAP_KEY=%s\n' "${{ secrets.VITE_KAKAO_MAP_KEY }}"  >> .env
+      # ── 2. 루트 .env 생성 (GitHub Secret ENV_FILE → 파일) ──────
+      # ENV_FILE Secret에 로컬 .env 파일 전체 내용을 붙여넣으면 됩니다.
+      # env: 블록으로 받아 shell 변수로 전달 → 멀티라인 값이 안전하게 보존됩니다.
+      - name: Create .env from GitHub Secret
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+        run: printf '%s' "$ENV_FILE" > .env
 
       # ── 3. Docker 이미지 빌드 및 컨테이너 재시작 ─────────────────
       - name: Build and restart containers
@@ -47,7 +37,7 @@ jobs:
       # ── 4. 헬스체크 (nginx가 응답할 때까지 최대 30초 대기) ──────
       - name: Health check
         run: |
-          PORT="${{ secrets.NGINX_PORT }}"
+          PORT=$(grep '^NGINX_PORT=' .env | cut -d'=' -f2)
           PORT="${PORT:-8090}"
           for i in $(seq 1 10); do
             if curl -sf "http://localhost:${PORT}/" > /dev/null 2>&1; then
