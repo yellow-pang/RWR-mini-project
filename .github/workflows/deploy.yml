@@ -1,80 +1,67 @@
-name: Deploy to Ubuntu VM
+name: Deploy to VM
 
 on:
   push:
     branches:
       - main
 
-# ── TODO: 아래 Secrets를 GitHub 저장소에 등록하세요 ─────────────────────────
+# ── GitHub Secrets 등록 필요 항목 ─────────────────────────────────────────────
 # Settings → Secrets and variables → Actions → New repository secret
-#   GHCR_TOKEN         : ghcr.io 인증용 GitHub Personal Access Token (packages:write 권한)
-#   VITE_KAKAO_MAP_KEY : 카카오맵 JavaScript API 키
-#   VM_HOST            : Ubuntu VM IP 또는 도메인
-#   VM_USER            : SSH 접속 사용자 (예: ubuntu)
-#   VM_SSH_KEY         : SSH 개인키 (PEM 형식 전체 내용)
+#   NGINX_PORT         : 8090
+#   NODE_ENV           : production
+#   CORS_ORIGIN        : https://rwr.yourdomain.com
+#   POSTGRES_USER      : rwr_user
+#   POSTGRES_PASSWORD  : (강력한 비밀번호 — $, & 등 특수문자 제외 권장)
+#   POSTGRES_DB        : rwr_db
+#   VITE_KAKAO_MAP_KEY : 카카오맵 JS API 키 (없으면 빈 값)
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
-
-      - name: Build and push client image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./client/Dockerfile
-          push: true
-          tags: ghcr.io/${{ github.repository_owner }}/rwr-client:latest
-          build-args: |
-            VITE_KAKAO_MAP_KEY=${{ secrets.VITE_KAKAO_MAP_KEY }}
-
-      - name: Build and push server image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./server
-          file: ./server/Dockerfile
-          push: true
-          tags: ghcr.io/${{ github.repository_owner }}/rwr-server:latest
-
   deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
+    name: Build & Deploy (self-hosted)
+    # VM에 설치한 GitHub Actions self-hosted runner에서 직접 실행
+    runs-on: self-hosted
 
     steps:
-      - name: Checkout
+      # ── 1. 코드 체크아웃 ─────────────────────────────────────────
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Copy docker-compose.yml to VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          source: "docker-compose.yml"
-          target: "~/rwr-project/"
+      # ── 2. 루트 .env 생성 (GitHub Secrets → 파일) ──────────────
+      # ⚠️ 비밀번호 특수문자 안전 처리: printf '%s\n' 방식 사용
+      # echo "VAR=$VALUE" 방식은 $, &, " 등 특수문자에서 파싱 오류 발생 가능
+      - name: Create .env from GitHub Secrets
+        run: |
+          printf 'NGINX_PORT=%s\n'         "${{ secrets.NGINX_PORT }}"         >  .env
+          printf 'NODE_ENV=%s\n'           "${{ secrets.NODE_ENV }}"            >> .env
+          printf 'CORS_ORIGIN=%s\n'        "${{ secrets.CORS_ORIGIN }}"         >> .env
+          printf 'POSTGRES_USER=%s\n'      "${{ secrets.POSTGRES_USER }}"       >> .env
+          printf 'POSTGRES_PASSWORD=%s\n'  "${{ secrets.POSTGRES_PASSWORD }}"   >> .env
+          printf 'POSTGRES_DB=%s\n'        "${{ secrets.POSTGRES_DB }}"         >> .env
+          printf 'VITE_KAKAO_MAP_KEY=%s\n' "${{ secrets.VITE_KAKAO_MAP_KEY }}"  >> .env
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            cd ~/rwr-project
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker compose pull
-            docker compose up -d --remove-orphans
-            docker image prune -f
+      # ── 3. Docker 이미지 빌드 및 컨테이너 재시작 ─────────────────
+      - name: Build and restart containers
+        run: |
+          docker compose up -d --build --remove-orphans
+
+      # ── 4. 헬스체크 (nginx가 응답할 때까지 최대 30초 대기) ──────
+      - name: Health check
+        run: |
+          PORT="${{ secrets.NGINX_PORT }}"
+          PORT="${PORT:-8090}"
+          for i in $(seq 1 10); do
+            if curl -sf "http://localhost:${PORT}/" > /dev/null 2>&1; then
+              echo "Health check passed (attempt ${i})"
+              exit 0
+            fi
+            echo "Waiting... (attempt ${i}/10)"
+            sleep 3
+          done
+          echo "Health check failed"
+          docker compose logs --tail=50
+          exit 1
+
+      # ── 5. 오래된 이미지 정리 ────────────────────────────────────
+      - name: Clean up dangling images
+        if: always()
+        run: docker image prune -f
