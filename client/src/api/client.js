@@ -1,5 +1,6 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+// 환경변수 미설정 시 빈 문자열 → 상대경로 /api 사용 (nginx 동일 오리진 프록시 대응)
+// 로컬 개발: VITE_API_BASE_URL=http://localhost:3000 또는 Vite proxy(/api) 모두 동작
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 const API_PATH_PREFIX = "/api";
 
 const FALLBACK_MESSAGES = {
@@ -36,7 +37,11 @@ export function buildUrl(path, params = {}) {
     ? baseUrl
     : `${baseUrl}${API_PATH_PREFIX}`;
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const url = new URL(`${normalizedBaseUrl}${normalizedPath}`);
+  // 상대경로(normalizedBaseUrl이 빈 문자열 또는 /api)일 때 window.location.origin을 베이스로 사용
+  const url = new URL(
+    `${normalizedBaseUrl}${normalizedPath}`,
+    window.location.origin,
+  );
 
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
