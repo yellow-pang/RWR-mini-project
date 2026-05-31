@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFriendlyErrorMessage } from "../api/client";
 import { fetchRandomCourse } from "../api/courses";
+import { createRoundTripRoute } from "../api/routes";
 import {
   DISTANCE_OPTIONS,
   TIME_OPTIONS,
@@ -10,6 +11,7 @@ import {
 import {
   GPS_FALLBACK_NOTICE,
   GPS_PERMISSION_FALLBACK_NOTICE,
+  GPS_ROUTE_NOTICE,
   RECOMMENDATION_MODE_OPTIONS,
   RECOMMENDATION_MODES,
 } from "../constants/recommendationModes";
@@ -64,22 +66,35 @@ function HomePage() {
       clearMessages();
       setRecommendationMeta(null);
 
+      let response;
+
       if (recommendationMode === RECOMMENDATION_MODES.GPS_ROUTE) {
         try {
-          await getCurrentPosition();
-          setRecommendationMeta({
-            mode: RECOMMENDATION_MODES.GPS_ROUTE,
-            usedFallback: true,
-            notice: GPS_FALLBACK_NOTICE,
+          const position = await getCurrentPosition();
+          response = await createRoundTripRoute({
+            ...conditions,
+            latitude: position.latitude,
+            longitude: position.longitude,
+            seed: Date.now(),
           });
-        } catch {
+          setRecommendationMeta({
+            mode: RECOMMENDATION_MODES.GPS_ROUTE,
+            usedFallback: false,
+            notice: GPS_ROUTE_NOTICE,
+          });
+        } catch (gpsError) {
+          response = await fetchRandomCourse(conditions);
           setRecommendationMeta({
             mode: RECOMMENDATION_MODES.GPS_ROUTE,
             usedFallback: true,
-            notice: GPS_PERMISSION_FALLBACK_NOTICE,
+            notice:
+              gpsError?.name === "GeolocationError"
+                ? GPS_PERMISSION_FALLBACK_NOTICE
+                : GPS_FALLBACK_NOTICE,
           });
         }
       } else {
+        response = await fetchRandomCourse(conditions);
         setRecommendationMeta({
           mode: RECOMMENDATION_MODES.RANDOM_DB,
           usedFallback: false,
@@ -87,11 +102,12 @@ function HomePage() {
         });
       }
 
-      const response = await fetchRandomCourse(conditions);
       setCurrentCourse(response.data);
 
-      const historySaved = await saveHistoryQuietly(response.data.id);
-      if (!historySaved) {
+      const historySaved =
+        response.data.source === "ors" ||
+        (await saveHistoryQuietly(response.data.id));
+      if (!historySaved && response.data.source !== "ors") {
         setNoticeMessage(HISTORY_SAVE_FAILED_MESSAGE);
       }
 

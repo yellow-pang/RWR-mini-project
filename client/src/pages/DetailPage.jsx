@@ -19,7 +19,8 @@ function DetailPage() {
   );
   const [isLoading, setIsLoading] = useState(!course);
   const [message, setMessage] = useState("");
-  const favorite = useFavoriteStatus(id);
+  const isGeneratedRoute = course?.source === "ors";
+  const favorite = useFavoriteStatus(isGeneratedRoute ? null : id);
 
   useEffect(() => {
     async function loadCourse() {
@@ -70,13 +71,17 @@ function DetailPage() {
           뒤로
         </button>
         <h1 className="page-header-title">코스 상세</h1>
-        <button
-          className={`header-icon-button detail-heart${favorite.isFavorite ? " active" : ""}`}
-          onClick={favorite.toggleFavorite}
-          aria-label={favorite.isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-        >
-          <Icon name="heart" size={29} filled={favorite.isFavorite} />
-        </button>
+        {isGeneratedRoute ? (
+          <span />
+        ) : (
+          <button
+            className={`header-icon-button detail-heart${favorite.isFavorite ? " active" : ""}`}
+            onClick={favorite.toggleFavorite}
+            aria-label={favorite.isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+          >
+            <Icon name="heart" size={29} filled={favorite.isFavorite} />
+          </button>
+        )}
       </header>
 
       {message && <p className="form-error">{message}</p>}
@@ -88,6 +93,7 @@ function DetailPage() {
       <MapView
         lat={course.start_lat}
         lng={course.start_lng}
+        routeCoordinates={course.geometry?.coordinates}
         title={course.title}
       />
 

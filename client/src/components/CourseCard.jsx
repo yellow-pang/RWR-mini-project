@@ -14,6 +14,7 @@ function CourseCard({
 }) {
   const navigate = useNavigate();
   const courseId = course.courseId || course.id;
+  const isGeneratedRoute = course.source === "ors";
 
   function handleDetail() {
     navigate(`/courses/${courseId}`, { state: { course } });
@@ -26,6 +27,7 @@ function CourseCard({
           compact
           lat={course.start_lat}
           lng={course.start_lng}
+          routeCoordinates={course.geometry?.coordinates}
           title={course.title}
         />
       )}
@@ -42,6 +44,9 @@ function CourseCard({
         <span className="course-badge type">{getTypeLabel(course.type)}</span>
         {course.mood && (
           <span className="course-badge mood">{getMoodLabel(course.mood)}</span>
+        )}
+        {isGeneratedRoute && (
+          <span className="course-badge mood">GPS 생성</span>
         )}
       </div>
 
@@ -65,7 +70,7 @@ function CourseCard({
         <button className="btn-detail" onClick={handleDetail}>
           상세 보기
         </button>
-        {onFavoriteToggle && (
+        {onFavoriteToggle && !isGeneratedRoute && (
           <button
             className={`favorite-btn${isFavorite ? " active" : ""}`}
             onClick={onFavoriteToggle}
