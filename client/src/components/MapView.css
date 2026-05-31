@@ -1,0 +1,21 @@
+.map-view {
+  width: 100%;
+  min-height: 210px;
+  border: 1px solid var(--color-border-muted);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.map-view.compact {
+  min-height: 184px;
+  border-radius: 18px;
+}
+
+/* 카카오맵 InfoWindow 내부 콘텐츠 (전역 스타일 필요) */
+.map-infowindow {
+  padding: 5px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #202124;
+}

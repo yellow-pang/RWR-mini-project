@@ -8,7 +8,8 @@ const { getCourseTypeQueryValues } = require("../constants/courseValues");
  */
 const COURSE_COLUMNS = `
   id, title, distance, time, type, mood,
-  description, reason, caution, tip
+  description, reason, caution, tip,
+  start_lat, start_lng
 `;
 
 exports.findRandom = async ({ distance, time, type, exclude }) => {

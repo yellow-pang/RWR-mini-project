@@ -4,7 +4,7 @@ import { getFriendlyErrorMessage } from "../api/client";
 import { fetchCourseById } from "../api/courses";
 import CourseInfo from "../components/CourseInfo";
 import Icon from "../components/Icon";
-import MapPreview from "../components/MapPreview";
+import MapView from "../components/MapView";
 import { useCourse } from "../hooks/useCourse";
 import { useFavoriteStatus } from "../hooks/useFavoriteStatus";
 import { getMoodLabel, getTypeLabel } from "../utils/courseDisplay";
@@ -88,7 +88,7 @@ function DetailPage() {
         <p className="form-notice">{favorite.noticeMessage}</p>
       )}
 
-      <MapPreview course={course} />
+      <MapView lat={course.start_lat} lng={course.start_lng} title={course.title} />
 
       <section className="detail-title-area">
         <h1 className="page-title">{course.title}</h1>
