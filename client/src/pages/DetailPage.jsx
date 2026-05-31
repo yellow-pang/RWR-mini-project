@@ -4,7 +4,7 @@ import { getFriendlyErrorMessage } from "../api/client";
 import { fetchCourseById } from "../api/courses";
 import CourseInfo from "../components/CourseInfo";
 import Icon from "../components/Icon";
-import MapPreview from "../components/MapPreview";
+import MapView from "../components/MapView";
 import { useCourse } from "../hooks/useCourse";
 import { useFavoriteStatus } from "../hooks/useFavoriteStatus";
 import { getMoodLabel, getTypeLabel } from "../utils/courseDisplay";
@@ -31,10 +31,7 @@ function DetailPage() {
         setCurrentCourse(response.data);
       } catch (err) {
         setMessage(
-          getFriendlyErrorMessage(
-            err,
-            "코스 상세 정보를 불러오지 못했습니다.",
-          ),
+          getFriendlyErrorMessage(err, "코스 상세 정보를 불러오지 못했습니다."),
         );
       } finally {
         setIsLoading(false);
@@ -88,7 +85,11 @@ function DetailPage() {
         <p className="form-notice">{favorite.noticeMessage}</p>
       )}
 
-      <MapPreview course={course} />
+      <MapView
+        lat={course.start_lat}
+        lng={course.start_lng}
+        title={course.title}
+      />
 
       <section className="detail-title-area">
         <h1 className="page-title">{course.title}</h1>
@@ -106,16 +107,17 @@ function DetailPage() {
             {getTypeLabel(course.type)}
           </span>
           {course.mood && (
-            <span className="detail-pill">
-              {getMoodLabel(course.mood)}
-            </span>
+            <span className="detail-pill">{getMoodLabel(course.mood)}</span>
           )}
         </div>
       </section>
 
       <CourseInfo course={course} />
 
-      <button className="btn-primary detail-recommend-btn" onClick={() => navigate("/")}>
+      <button
+        className="btn-primary detail-recommend-btn"
+        onClick={() => navigate("/")}
+      >
         다른 코스 추천받기
       </button>
     </div>

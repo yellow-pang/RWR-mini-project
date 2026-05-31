@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { getMoodLabel, getTypeLabel } from "../utils/courseDisplay";
 import Icon from "./Icon";
-import MapPreview from "./MapPreview";
+import MapView from "./MapView";
 import "./CourseCard.css";
 
 function CourseCard({
@@ -21,7 +21,14 @@ function CourseCard({
 
   return (
     <div className={`course-card${featured ? " featured" : ""}`}>
-      {featured && <MapPreview compact course={course} />}
+      {featured && (
+        <MapView
+          compact
+          lat={course.start_lat}
+          lng={course.start_lng}
+          title={course.title}
+        />
+      )}
 
       <div className="course-card-header">
         <h2 className="course-title">{course.title}</h2>

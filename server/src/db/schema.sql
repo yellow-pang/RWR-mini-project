@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS courses (
   reason       TEXT         NOT NULL,
   caution      TEXT         NOT NULL,
   tip          TEXT         NOT NULL,
+  start_lat    NUMERIC(9,6),
+  start_lng    NUMERIC(9,6),
   created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
