@@ -152,6 +152,7 @@ SDK URL을 `//dapi.kakao.com`(protocol-relative)으로 작성했을 때 `http://
 **현상**  
 `https://` 수정 후에도 SDK 요청이 403으로 차단됨.  
 PowerShell 직접 요청 결과:
+
 ```
 Invoke-WebRequest -Uri "https://dapi.kakao.com/v2/maps/sdk.js?appkey=...&autoload=false"
 → 403 Forbidden (응답 본문 없음)
@@ -176,6 +177,7 @@ Invoke-WebRequest -Uri "https://dapi.kakao.com/v2/maps/sdk.js?appkey=...&autoloa
 
 **원인 분석**  
 `autoload=false` 방식에서 SDK 스크립트 로드 직후 상태:
+
 - `window.kakao` → ✅ 존재
 - `window.kakao.maps` → ❌ `undefined` (아직 초기화 안 됨)
 - `window.kakao.maps.*` → `kakao.maps.load()` 콜백 실행 후에야 사용 가능
@@ -197,11 +199,11 @@ const [sdkFailed] = useState(() => !window.kakao);
 
 ### 교훈 요약
 
-| # | 문제 | 핵심 원인 | 해결 |
-|---|------|-----------|------|
-| 1 | ERR_BLOCKED_BY_ORB | `//` protocol-relative → HTTP 해석 | `https://` 명시 |
-| 2 | 403 Forbidden | 카카오 API 활성화 OFF (2024.12 정책 변경) | 콘솔에서 API 활성화 |
-| 3 | SDK 로드 후에도 SVG fallback | `autoload=false` 특성 무시한 `kakao?.maps` 체크 | `!window.kakao`로 변경 |
+| #   | 문제                         | 핵심 원인                                       | 해결                   |
+| --- | ---------------------------- | ----------------------------------------------- | ---------------------- |
+| 1   | ERR_BLOCKED_BY_ORB           | `//` protocol-relative → HTTP 해석              | `https://` 명시        |
+| 2   | 403 Forbidden                | 카카오 API 활성화 OFF (2024.12 정책 변경)       | 콘솔에서 API 활성화    |
+| 3   | SDK 로드 후에도 SVG fallback | `autoload=false` 특성 무시한 `kakao?.maps` 체크 | `!window.kakao`로 변경 |
 
 ---
 
@@ -209,7 +211,7 @@ const [sdkFailed] = useState(() => !window.kakao);
 
 아래 블록을 그대로 Notion에 붙여넣으면 됩니다.
 
-```markdown
+````markdown
 # 🗺️ 카카오맵 SDK 연동 디버깅 노트
 
 > 프로젝트: RWR-mini-project
@@ -221,14 +223,17 @@ const [sdkFailed] = useState(() => !window.kakao);
 ## 문제 1: ERR_BLOCKED_BY_ORB
 
 ### 현상
+
 - 브라우저 콘솔에 `ERR_BLOCKED_BY_ORB` 출력
 - 카카오맵 스크립트 로드 실패 → SVG fallback만 표시
 
 ### 원인
+
 `index.html`에서 SDK URL을 `//dapi.kakao.com`(protocol-relative)으로 작성함.
 `http://localhost:5173` 환경에서 `http://dapi.kakao.com`으로 해석 → ORB 차단.
 
 ### 해결
+
 ```html
 <!-- 변경 전 -->
 <script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=...&autoload=false"></script>
@@ -242,15 +247,18 @@ const [sdkFailed] = useState(() => !window.kakao);
 ## 문제 2: 403 Forbidden
 
 ### 현상
+
 `https://` 수정 후에도 SDK 스크립트 요청에서 403 반환.
 PowerShell, 브라우저 모두 동일하게 차단됨.
 
 ### 원인
+
 **카카오 2024.12.01 정책 변경**: 신규 앱은 Kakao Developers 콘솔에서
 사용할 API를 **명시적으로 활성화**해야 함.
 → 「카카오 지도 (Kakao Map)」 API가 OFF 상태였음.
 
 ### 해결
+
 1. https://developers.kakao.com 접속
 2. 내 애플리케이션 → 앱 선택 → 앱 설정
 3. **「카카오 지도」 활성화 → ON**
@@ -263,15 +271,17 @@ PowerShell, 브라우저 모두 동일하게 차단됨.
 ## 문제 3: SDK 로드 성공 후에도 SVG fallback 표시
 
 ### 현상
+
 403이 해결되어 SDK 스크립트가 정상 로드되어도 지도 대신 SVG placeholder만 표시됨.
 
 ### 원인
+
 `autoload=false` 방식의 특성을 코드에서 고려하지 않음.
 
-| 시점 | `window.kakao` | `window.kakao.maps` |
-|------|----------------|---------------------|
-| SDK 스크립트 로드 직후 | ✅ 존재 | ❌ undefined |
-| `kakao.maps.load()` 콜백 실행 후 | ✅ 존재 | ✅ 초기화됨 |
+| 시점                             | `window.kakao` | `window.kakao.maps` |
+| -------------------------------- | -------------- | ------------------- |
+| SDK 스크립트 로드 직후           | ✅ 존재        | ❌ undefined        |
+| `kakao.maps.load()` 콜백 실행 후 | ✅ 존재        | ✅ 초기화됨         |
 
 ```jsx
 // ❌ 잘못된 코드 - SDK 로드 직후 kakao.maps는 항상 undefined
@@ -287,21 +297,27 @@ const [sdkFailed] = useState(() => !window.kakao);
 ```
 
 ### 해결
+
 `!window.kakao?.maps` → `!window.kakao` 변경
 
 ---
 
 ## 정리
 
-| 번호 | 증상 | 원인 | 해결 |
-|------|------|------|------|
-| 1 | ERR_BLOCKED_BY_ORB | protocol-relative URL → HTTP 해석 | `https://` 명시 |
-| 2 | 403 Forbidden | 카카오 API 활성화 OFF | 콘솔에서 활성화 ON |
-| 3 | SVG fallback 고착 | `autoload=false` 시 `kakao.maps` undefined인데 체크함 | `!window.kakao`로 변경 |
+| 번호 | 증상               | 원인                                                  | 해결                   |
+| ---- | ------------------ | ----------------------------------------------------- | ---------------------- |
+| 1    | ERR_BLOCKED_BY_ORB | protocol-relative URL → HTTP 해석                     | `https://` 명시        |
+| 2    | 403 Forbidden      | 카카오 API 활성화 OFF                                 | 콘솔에서 활성화 ON     |
+| 3    | SVG fallback 고착  | `autoload=false` 시 `kakao.maps` undefined인데 체크함 | `!window.kakao`로 변경 |
 
 > 카카오맵 `autoload=false` 패턴 공식 흐름:
+>
 > 1. `<script src="https://dapi.kakao.com/.../sdk.js?autoload=false">` 로드
 > 2. React 컴포넌트에서 `window.kakao` 존재 여부로 로드 판별
 > 3. `kakao.maps.load(callback)` 호출
 > 4. callback 내에서 `new kakao.maps.Map(...)` 등 API 사용
+
 ```
+
+```
+````
