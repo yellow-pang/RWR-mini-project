@@ -7,16 +7,30 @@ import {
   TIME_OPTIONS,
   TYPE_OPTIONS,
 } from "../constants/courseOptions";
+import {
+  GPS_FALLBACK_NOTICE,
+  GPS_PERMISSION_FALLBACK_NOTICE,
+  RECOMMENDATION_MODE_OPTIONS,
+  RECOMMENDATION_MODES,
+} from "../constants/recommendationModes";
 import { useCourse } from "../hooks/useCourse";
 import Icon from "../components/Icon";
 import {
   HISTORY_SAVE_FAILED_MESSAGE,
   saveHistoryQuietly,
 } from "../utils/history";
+import { getCurrentPosition } from "../utils/geolocation";
 
 function HomePage() {
   const navigate = useNavigate();
-  const { conditions, setConditions, setCurrentCourse } = useCourse();
+  const {
+    conditions,
+    setConditions,
+    setCurrentCourse,
+    recommendationMode,
+    setRecommendationMode,
+    setRecommendationMeta,
+  } = useCourse();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [noticeMessage, setNoticeMessage] = useState("");
@@ -39,6 +53,7 @@ function HomePage() {
   function handleReset() {
     clearMessages();
     setConditions({ distance: null, time: null, type: null });
+    setRecommendationMeta(null);
   }
 
   async function handleRecommend() {
@@ -47,6 +62,31 @@ function HomePage() {
     try {
       setIsLoading(true);
       clearMessages();
+      setRecommendationMeta(null);
+
+      if (recommendationMode === RECOMMENDATION_MODES.GPS_ROUTE) {
+        try {
+          await getCurrentPosition();
+          setRecommendationMeta({
+            mode: RECOMMENDATION_MODES.GPS_ROUTE,
+            usedFallback: true,
+            notice: GPS_FALLBACK_NOTICE,
+          });
+        } catch {
+          setRecommendationMeta({
+            mode: RECOMMENDATION_MODES.GPS_ROUTE,
+            usedFallback: true,
+            notice: GPS_PERMISSION_FALLBACK_NOTICE,
+          });
+        }
+      } else {
+        setRecommendationMeta({
+          mode: RECOMMENDATION_MODES.RANDOM_DB,
+          usedFallback: false,
+          notice: "",
+        });
+      }
+
       const response = await fetchRandomCourse(conditions);
       setCurrentCourse(response.data);
 
@@ -63,6 +103,7 @@ function HomePage() {
           "추천 코스를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
         ),
       );
+      setRecommendationMeta(null);
     } finally {
       setIsLoading(false);
     }
@@ -133,11 +174,33 @@ function HomePage() {
               className={`chip${conditions.type === opt.value ? " selected" : ""}`}
               onClick={() => handleSelect("type", opt.value)}
             >
-              <Icon
-                name={opt.value === "walk" ? "foot" : "runner"}
-                size={24}
-              />
+              <Icon name={opt.value === "walk" ? "foot" : "runner"} size={24} />
               {opt.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="condition-section">
+        <h2 className="condition-title">
+          <Icon name="pin" size={28} className="icon-green" />
+          추천 방식
+        </h2>
+        <div className="recommendation-mode-group">
+          {RECOMMENDATION_MODE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              className={`recommendation-mode${recommendationMode === opt.value ? " selected" : ""}`}
+              onClick={() => {
+                clearMessages();
+                setRecommendationMeta(null);
+                setRecommendationMode(opt.value);
+              }}
+            >
+              <span className="recommendation-mode-label">{opt.label}</span>
+              <span className="recommendation-mode-desc">
+                {opt.description}
+              </span>
             </button>
           ))}
         </div>
@@ -151,7 +214,7 @@ function HomePage() {
         disabled={!allSelected || isLoading}
         onClick={handleRecommend}
       >
-        {isLoading ? "추천 중..." : "랜덤 코스 추천받기!"}
+        {isLoading ? "추천 중..." : "코스 추천받기!"}
       </button>
       <button className="btn-reset" onClick={handleReset}>
         초기화
