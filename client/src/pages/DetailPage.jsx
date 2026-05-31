@@ -31,10 +31,7 @@ function DetailPage() {
         setCurrentCourse(response.data);
       } catch (err) {
         setMessage(
-          getFriendlyErrorMessage(
-            err,
-            "코스 상세 정보를 불러오지 못했습니다.",
-          ),
+          getFriendlyErrorMessage(err, "코스 상세 정보를 불러오지 못했습니다."),
         );
       } finally {
         setIsLoading(false);
@@ -88,7 +85,11 @@ function DetailPage() {
         <p className="form-notice">{favorite.noticeMessage}</p>
       )}
 
-      <MapView lat={course.start_lat} lng={course.start_lng} title={course.title} />
+      <MapView
+        lat={course.start_lat}
+        lng={course.start_lng}
+        title={course.title}
+      />
 
       <section className="detail-title-area">
         <h1 className="page-title">{course.title}</h1>
@@ -106,16 +107,17 @@ function DetailPage() {
             {getTypeLabel(course.type)}
           </span>
           {course.mood && (
-            <span className="detail-pill">
-              {getMoodLabel(course.mood)}
-            </span>
+            <span className="detail-pill">{getMoodLabel(course.mood)}</span>
           )}
         </div>
       </section>
 
       <CourseInfo course={course} />
 
-      <button className="btn-primary detail-recommend-btn" onClick={() => navigate("/")}>
+      <button
+        className="btn-primary detail-recommend-btn"
+        onClick={() => navigate("/")}
+      >
         다른 코스 추천받기
       </button>
     </div>

@@ -12,7 +12,10 @@ function MapView({ lat, lng, title, compact = false }) {
   const containerRef = useRef(null);
 
   const hasCoords =
-    lat != null && lng != null && !Number.isNaN(Number(lat)) && !Number.isNaN(Number(lng));
+    lat != null &&
+    lng != null &&
+    !Number.isNaN(Number(lat)) &&
+    !Number.isNaN(Number(lng));
 
   // SDK 이용 가능 여부를 마운트 시점에 1회 평가 (effect 내 setState 금지 규칙 준수)
   const [sdkFailed] = useState(() => !window.kakao?.maps);
