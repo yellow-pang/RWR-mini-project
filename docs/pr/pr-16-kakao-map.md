@@ -32,16 +32,16 @@
 
 ## 변경 사항
 
-| 구분 | 파일                                   | 내용                                               |
-| ---- | -------------------------------------- | -------------------------------------------------- |
-| 수정 | `server/src/db/schema.sql`             | `courses` 테이블에 `start_lat`, `start_lng` 컬럼 추가 |
-| 수정 | `server/src/db/seed.sql`               | 10개 코스 서울 실제 좌표 추가                      |
-| 수정 | `server/src/services/coursesService.js` | `COURSE_COLUMNS`에 `start_lat`, `start_lng` 포함   |
-| 수정 | `client/index.html`                    | 카카오맵 JavaScript SDK 스크립트 로드              |
-| 신규 | `client/src/components/MapView.jsx`    | 카카오맵 실제 렌더링 컴포넌트 (SVG fallback 포함)  |
-| 신규 | `client/src/components/MapView.css`    | MapView 컨테이너 스타일                            |
-| 수정 | `client/src/components/CourseCard.jsx` | `MapPreview` → `MapView` 교체 (compact 모드)       |
-| 수정 | `client/src/pages/DetailPage.jsx`      | `MapPreview` → `MapView` 교체 (전체 모드)          |
+| 구분 | 파일                                    | 내용                                                  |
+| ---- | --------------------------------------- | ----------------------------------------------------- |
+| 수정 | `server/src/db/schema.sql`              | `courses` 테이블에 `start_lat`, `start_lng` 컬럼 추가 |
+| 수정 | `server/src/db/seed.sql`                | 10개 코스 서울 실제 좌표 추가                         |
+| 수정 | `server/src/services/coursesService.js` | `COURSE_COLUMNS`에 `start_lat`, `start_lng` 포함      |
+| 수정 | `client/index.html`                     | 카카오맵 JavaScript SDK 스크립트 로드                 |
+| 신규 | `client/src/components/MapView.jsx`     | 카카오맵 실제 렌더링 컴포넌트 (SVG fallback 포함)     |
+| 신규 | `client/src/components/MapView.css`     | MapView 컨테이너 스타일                               |
+| 수정 | `client/src/components/CourseCard.jsx`  | `MapPreview` → `MapView` 교체 (compact 모드)          |
+| 수정 | `client/src/pages/DetailPage.jsx`       | `MapPreview` → `MapView` 교체 (전체 모드)             |
 
 ---
 

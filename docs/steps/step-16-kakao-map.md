@@ -16,16 +16,16 @@
 
 ## 2. 변경 내용
 
-| 구분 | 파일                                    | 설명                                               |
-| ---- | --------------------------------------- | -------------------------------------------------- |
+| 구분 | 파일                                    | 설명                                                  |
+| ---- | --------------------------------------- | ----------------------------------------------------- |
 | 수정 | `server/src/db/schema.sql`              | `courses` 테이블에 `start_lat`, `start_lng` 컬럼 추가 |
-| 수정 | `server/src/db/seed.sql`                | 10개 코스 서울 실제 좌표 추가                      |
-| 수정 | `server/src/services/coursesService.js` | `COURSE_COLUMNS`에 `start_lat`, `start_lng` 포함   |
-| 수정 | `client/index.html`                     | 카카오맵 JavaScript SDK 스크립트 로드              |
-| 신규 | `client/src/components/MapView.jsx`     | 카카오맵 실제 렌더링 컴포넌트 (SVG fallback 포함)  |
-| 신규 | `client/src/components/MapView.css`     | MapView 컨테이너 스타일                            |
-| 수정 | `client/src/components/CourseCard.jsx`  | `MapPreview` → `MapView` 교체 (compact 모드)       |
-| 수정 | `client/src/pages/DetailPage.jsx`       | `MapPreview` → `MapView` 교체 (전체 모드)          |
+| 수정 | `server/src/db/seed.sql`                | 10개 코스 서울 실제 좌표 추가                         |
+| 수정 | `server/src/services/coursesService.js` | `COURSE_COLUMNS`에 `start_lat`, `start_lng` 포함      |
+| 수정 | `client/index.html`                     | 카카오맵 JavaScript SDK 스크립트 로드                 |
+| 신규 | `client/src/components/MapView.jsx`     | 카카오맵 실제 렌더링 컴포넌트 (SVG fallback 포함)     |
+| 신규 | `client/src/components/MapView.css`     | MapView 컨테이너 스타일                               |
+| 수정 | `client/src/components/CourseCard.jsx`  | `MapPreview` → `MapView` 교체 (compact 모드)          |
+| 수정 | `client/src/pages/DetailPage.jsx`       | `MapPreview` → `MapView` 교체 (전체 모드)             |
 
 ---
 
@@ -73,7 +73,10 @@ const [sdkFailed] = useState(() => !window.kakao?.maps);
 useEffect(() => {
   if (!hasCoords || sdkFailed) return;
   window.kakao.maps.load(() => {
-    const map = new window.kakao.maps.Map(containerRef.current, { center, level });
+    const map = new window.kakao.maps.Map(containerRef.current, {
+      center,
+      level,
+    });
     new window.kakao.maps.Marker({ map, position: center });
     // compact=false 이면 InfoWindow(코스명)도 표시
   });
@@ -85,21 +88,21 @@ if (!hasCoords || sdkFailed) return <MapPreview compact={compact} />;
 
 ### 3.5 등록 도메인
 
-| 환경 | 도메인 |
-| ---- | ------ |
-| 개발 | `http://localhost:5173` |
+| 환경 | 도메인                      |
+| ---- | --------------------------- |
+| 개발 | `http://localhost:5173`     |
 | 운영 | `https://rwr.healthq.store` |
 
 ---
 
 ## 4. 검증 결과
 
-| 검증 항목 | 결과 |
-| --------- | ---- |
-| `npm run lint` | ✅ 통과 |
-| `npm run build` | ✅ 통과 (dist 55 modules) |
-| `start_lat`/`start_lng` null 시 SVG fallback | ✅ 확인 |
-| SDK 미로드 시 SVG fallback | ✅ 확인 |
+| 검증 항목                                    | 결과                      |
+| -------------------------------------------- | ------------------------- |
+| `npm run lint`                               | ✅ 통과                   |
+| `npm run build`                              | ✅ 통과 (dist 55 modules) |
+| `start_lat`/`start_lng` null 시 SVG fallback | ✅ 확인                   |
+| SDK 미로드 시 SVG fallback                   | ✅ 확인                   |
 
 ---
 
