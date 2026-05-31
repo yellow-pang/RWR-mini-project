@@ -17,8 +17,8 @@ function MapView({ lat, lng, title, compact = false }) {
     !Number.isNaN(Number(lat)) &&
     !Number.isNaN(Number(lng));
 
-  // SDK 이용 가능 여부를 마운트 시점에 1회 평가 (effect 내 setState 금지 규칙 준수)
-  const [sdkFailed] = useState(() => !window.kakao?.maps);
+  // window.kakao 존재 여부만 확인 (autoload=false 시 kakao.maps는 load() 콜백 이후에 초기화되므로 kakao?.maps 체크 불가)
+  const [sdkFailed] = useState(() => !window.kakao);
 
   useEffect(() => {
     if (!hasCoords || sdkFailed) return;
