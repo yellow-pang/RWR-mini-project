@@ -66,7 +66,11 @@ body {
 }
 
 body {
-  background: radial-gradient(circle at top, var(--color-surface) 0, var(--color-bg) 62%);
+  background: radial-gradient(
+    circle at top,
+    var(--color-surface) 0,
+    var(--color-bg) 62%
+  );
   color: var(--color-text-main);
 }
 
@@ -338,6 +342,55 @@ a {
   box-shadow: none;
 }
 
+.recommendation-mode-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.recommendation-mode {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 78px;
+  padding: 14px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-card);
+  color: var(--color-text-main);
+  text-align: left;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.recommendation-mode:hover,
+.recommendation-mode.selected {
+  border-color: var(--color-primary);
+}
+
+.recommendation-mode.selected {
+  background: var(--color-primary-soft);
+  box-shadow: var(--shadow-card-active);
+}
+
+.recommendation-mode-label {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.recommendation-mode-desc {
+  margin-top: 4px;
+  color: var(--color-text-sub);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.recommendation-mode.selected .recommendation-mode-label {
+  color: var(--color-primary-dark);
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -460,5 +513,9 @@ a {
 
   .condition-section {
     padding-inline: 12px;
+  }
+
+  .recommendation-mode-group {
+    grid-template-columns: 1fr;
   }
 }

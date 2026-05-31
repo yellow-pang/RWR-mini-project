@@ -4,9 +4,15 @@ import { getFriendlyErrorMessage } from "../api/client";
 import { fetchRandomCourse } from "../api/courses";
 import CourseCard from "../components/CourseCard";
 import Icon from "../components/Icon";
+import {
+  GPS_FALLBACK_NOTICE,
+  GPS_PERMISSION_FALLBACK_NOTICE,
+  RECOMMENDATION_MODES,
+} from "../constants/recommendationModes";
 import { useCourse } from "../hooks/useCourse";
 import { useFavoriteStatus } from "../hooks/useFavoriteStatus";
 import { getTypeLabel } from "../utils/courseDisplay";
+import { getCurrentPosition } from "../utils/geolocation";
 import {
   HISTORY_SAVE_FAILED_MESSAGE,
   saveHistoryQuietly,
@@ -14,7 +20,14 @@ import {
 
 function ResultPage() {
   const navigate = useNavigate();
-  const { conditions, currentCourse, setCurrentCourse } = useCourse();
+  const {
+    conditions,
+    currentCourse,
+    setCurrentCourse,
+    recommendationMode,
+    recommendationMeta,
+    setRecommendationMeta,
+  } = useCourse();
   const [isLoading, setIsLoading] = useState(false);
   const [retryMessage, setRetryMessage] = useState("");
   const [historyNotice, setHistoryNotice] = useState("");
@@ -29,6 +42,24 @@ function ResultPage() {
       setIsLoading(true);
       setRetryMessage("");
       setHistoryNotice("");
+
+      if (recommendationMode === RECOMMENDATION_MODES.GPS_ROUTE) {
+        try {
+          await getCurrentPosition();
+          setRecommendationMeta({
+            mode: RECOMMENDATION_MODES.GPS_ROUTE,
+            usedFallback: true,
+            notice: GPS_FALLBACK_NOTICE,
+          });
+        } catch {
+          setRecommendationMeta({
+            mode: RECOMMENDATION_MODES.GPS_ROUTE,
+            usedFallback: true,
+            notice: GPS_PERMISSION_FALLBACK_NOTICE,
+          });
+        }
+      }
+
       const response = await fetchRandomCourse({
         ...conditions,
         exclude: course?.id,
@@ -41,10 +72,7 @@ function ResultPage() {
       }
     } catch (err) {
       setRetryMessage(
-        getFriendlyErrorMessage(
-          err,
-          "다시 추천할 코스를 불러오지 못했습니다.",
-        ),
+        getFriendlyErrorMessage(err, "다시 추천할 코스를 불러오지 못했습니다."),
       );
     } finally {
       setIsLoading(false);
@@ -101,6 +129,9 @@ function ResultPage() {
 
       {retryMessage && <p className="form-error">{retryMessage}</p>}
       {favorite.message && <p className="form-error">{favorite.message}</p>}
+      {recommendationMeta?.notice && (
+        <p className="form-notice">{recommendationMeta.notice}</p>
+      )}
       {historyNotice && <p className="form-notice">{historyNotice}</p>}
       {favorite.noticeMessage && (
         <p className="form-notice">{favorite.noticeMessage}</p>
