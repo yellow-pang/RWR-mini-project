@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFriendlyErrorMessage } from "../api/client";
-import { reverseGeocodeLocation, searchAddresses } from "../api/locations";
+import { geocodeAddress, reverseGeocodeLocation } from "../api/locations";
 import { createAddressRoundTripRoute } from "../api/routes";
 import {
   DISTANCE_OPTIONS,
@@ -21,6 +21,10 @@ import {
   saveHistoryQuietly,
 } from "../utils/history";
 import { getCurrentPosition } from "../utils/geolocation";
+import {
+  getSelectedPostcodeAddress,
+  loadPostcodeScript,
+} from "../utils/postcode";
 
 function HomePage() {
   const navigate = useNavigate();
@@ -32,11 +36,12 @@ function HomePage() {
     setRouteLocation,
     setRecommendationMeta,
   } = useCourse();
+  const postcodeLayerRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
-  const [addressQuery, setAddressQuery] = useState(routeLocation.address);
-  const [addressResults, setAddressResults] = useState([]);
-  const [addressSearchMessage, setAddressSearchMessage] = useState("");
+  const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
+  const [isPostcodeLoading, setIsPostcodeLoading] = useState(false);
+  const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
+  const [postcodeMessage, setPostcodeMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [noticeMessage, setNoticeMessage] = useState("");
 
@@ -58,20 +63,6 @@ function HomePage() {
     setConditions((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleAddressQueryChange(event) {
-    clearMessages();
-    setAddressSearchMessage("");
-    setAddressResults([]);
-    setAddressQuery(event.target.value);
-    setRecommendationMeta(null);
-    setRouteLocation({
-      address: "",
-      latitude: null,
-      longitude: null,
-      source: null,
-    });
-  }
-
   function handleReset() {
     clearMessages();
     setConditions({ distance: null, time: null, type: null });
@@ -81,62 +72,96 @@ function HomePage() {
       longitude: null,
       source: null,
     });
-    setAddressQuery("");
-    setAddressResults([]);
-    setAddressSearchMessage("");
+    setPostcodeMessage("");
+    setIsPostcodeOpen(false);
     setRecommendationMeta(null);
   }
 
-  async function handleSearchAddress() {
-    const query = addressQuery.trim();
-    if (query.length < 2 || isSearchingAddress) return;
+  async function applyPostcodeAddress(address) {
+    if (!address) {
+      setPostcodeMessage("선택한 주소를 확인하지 못했습니다.");
+      return;
+    }
 
     try {
-      setIsSearchingAddress(true);
+      setIsGeocodingAddress(true);
       clearMessages();
-      setAddressSearchMessage("");
-      setAddressResults([]);
+      setPostcodeMessage("주소 좌표 확인 중...");
+      setRecommendationMeta(null);
+      setRouteLocation({
+        address: "",
+        latitude: null,
+        longitude: null,
+        source: null,
+      });
 
-      const response = await searchAddresses({ query });
-      const results = response.data || [];
-      setAddressResults(results);
-
-      if (results.length === 0) {
-        setAddressSearchMessage(
-          "검색 결과가 없습니다. 도로명이나 건물명을 줄여서 입력해 주세요.",
-        );
-      }
+      const response = await geocodeAddress({ address });
+      setRouteLocation({
+        ...response.data,
+        address,
+        source: "postcode",
+      });
+      setPostcodeMessage("");
     } catch (err) {
-      setAddressSearchMessage(
+      setRouteLocation({
+        address: "",
+        latitude: null,
+        longitude: null,
+        source: null,
+      });
+      setPostcodeMessage(
         getFriendlyErrorMessage(
           err,
-          "주소 검색에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+          "선택한 주소의 좌표를 찾지 못했습니다. 다른 주소를 선택해 주세요.",
         ),
       );
     } finally {
-      setIsSearchingAddress(false);
+      setIsGeocodingAddress(false);
     }
   }
 
-  function handleAddressQueryKeyDown(event) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      handleSearchAddress();
+  function renderPostcodeLayer(Postcode) {
+    const layer = postcodeLayerRef.current;
+    if (!layer) return;
+
+    layer.innerHTML = "";
+    new Postcode({
+      oncomplete(data) {
+        const selectedAddress = getSelectedPostcodeAddress(data);
+        setIsPostcodeOpen(false);
+        applyPostcodeAddress(selectedAddress);
+      },
+      onresize(size) {
+        layer.style.height = `${Math.min(size.height, 520)}px`;
+      },
+      width: "100%",
+      height: "100%",
+      maxSuggestItems: 5,
+    }).embed(layer);
+  }
+
+  async function handleOpenPostcode() {
+    if (isPostcodeLoading) return;
+
+    try {
+      setIsPostcodeLoading(true);
+      clearMessages();
+      setPostcodeMessage("");
+      const Postcode = await loadPostcodeScript();
+      setIsPostcodeOpen(true);
+      window.requestAnimationFrame(() => renderPostcodeLayer(Postcode));
+    } catch (err) {
+      setPostcodeMessage(
+        err.message ||
+          "우편번호 서비스를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    } finally {
+      setIsPostcodeLoading(false);
     }
   }
 
-  function handleSelectAddress(result) {
-    clearMessages();
-    setAddressSearchMessage("");
-    setAddressResults([]);
-    setAddressQuery(result.roadAddress || result.address);
-    setRouteLocation({
-      address: result.roadAddress || result.address,
-      latitude: result.latitude,
-      longitude: result.longitude,
-      source: result.source,
-    });
-    setRecommendationMeta(null);
+  function handleClosePostcode() {
+    setIsPostcodeOpen(false);
   }
 
   async function handleUseCurrentLocation() {
@@ -150,9 +175,8 @@ function HomePage() {
       try {
         const response = await reverseGeocodeLocation(position);
         setRouteLocation(response.data);
-        setAddressQuery(response.data.address);
-        setAddressResults([]);
-        setAddressSearchMessage("");
+        setPostcodeMessage("");
+        setIsPostcodeOpen(false);
         setNoticeMessage(GPS_ADDRESS_NOTICE);
       } catch {
         setRouteLocation({
@@ -161,9 +185,8 @@ function HomePage() {
           longitude: position.longitude,
           source: "gps",
         });
-        setAddressQuery("현재 위치 기준");
-        setAddressResults([]);
-        setAddressSearchMessage("");
+        setPostcodeMessage("");
+        setIsPostcodeOpen(false);
         setNoticeMessage(GPS_ADDRESS_FALLBACK_NOTICE);
       }
     } catch {
@@ -230,81 +253,52 @@ function HomePage() {
 
       <h1 className="home-title">오늘은 어디로 걸어볼까요?</h1>
 
-      <section className="condition-section">
+      <section className="condition-section address-section">
         <h2 className="condition-title">
           <Icon name="pin" size={28} className="icon-green" />
           출발 주소
         </h2>
-        <div className="address-search-grid">
-          <input
-            className="address-input address-search-input"
-            type="text"
-            value={addressQuery}
-            onChange={handleAddressQueryChange}
-            onKeyDown={handleAddressQueryKeyDown}
-            placeholder="도로명, 지번, 건물명 검색"
-            aria-label="주소 검색어"
-          />
+        <div className="address-action-row">
           <button
-            className="btn-address-search"
+            className="btn-postcode"
             type="button"
-            onClick={handleSearchAddress}
-            disabled={addressQuery.trim().length < 2 || isSearchingAddress}
+            onClick={handleOpenPostcode}
+            disabled={isPostcodeLoading || isGeocodingAddress}
           >
-            {isSearchingAddress ? "검색 중..." : "검색"}
+            <Icon name="search" size={21} />
+            {isPostcodeLoading ? "불러오는 중..." : "주소 찾기"}
           </button>
-          <div className="selected-address-panel">
-            <span className="selected-address-label">선택된 주소</span>
-            <span className="selected-address-value">
-              {hasLocation
-                ? routeLocation.address
-                : "검색 결과에서 출발 주소를 선택해 주세요."}
-            </span>
-          </div>
+          <button
+            className="btn-current-location"
+            type="button"
+            onClick={handleUseCurrentLocation}
+            disabled={isLoading}
+          >
+            <Icon name="pin" size={21} />
+            현재 위치
+          </button>
         </div>
-        {addressResults.length > 0 && (
-          <div className="address-result-list" aria-label="주소 검색 결과">
-            {addressResults.map((result) => (
-              <button
-                className="address-result-item"
-                type="button"
-                key={`${result.id}-${result.latitude}-${result.longitude}`}
-                onClick={() => handleSelectAddress(result)}
-              >
-                <span className="address-result-main">
-                  {result.roadAddress || result.address}
-                </span>
-                {result.jibunAddress && (
-                  <span className="address-result-sub">
-                    지번 {result.jibunAddress}
-                  </span>
-                )}
-                {(result.buildingName || result.region) && (
-                  <span className="address-result-meta">
-                    {[result.buildingName, result.region]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+        <div className="selected-address-panel">
+          <span className="selected-address-label">선택된 주소</span>
+          <span className="selected-address-value">
+            {hasLocation
+              ? routeLocation.address
+              : "주소 찾기에서 출발 주소를 선택해 주세요."}
+          </span>
+        </div>
+        {postcodeMessage && (
+          <p
+            className={
+              isGeocodingAddress ? "address-search-message" : "form-error"
+            }
+          >
+            {postcodeMessage}
+          </p>
         )}
-        {addressSearchMessage && (
-          <p className="address-search-message">{addressSearchMessage}</p>
-        )}
-        <button
-          className="btn-location"
-          type="button"
-          onClick={handleUseCurrentLocation}
-          disabled={isLoading}
-        >
-          현재 위치 사용
-        </button>
         <div className="address-helper-row">
           {!hasLocation && (
             <p className="address-helper">
-              검색어 입력 후 후보 주소를 선택해야 코스를 생성할 수 있습니다.
+              주소 찾기에서 주소를 선택해야 코스를 생성할 수 있습니다.
             </p>
           )}
           {routeLocation.latitude !== null &&
@@ -312,6 +306,25 @@ function HomePage() {
               <p className="address-helper">{GPS_LOCATION_NOTICE}</p>
             )}
         </div>
+        {isPostcodeOpen && (
+          <div className="postcode-overlay" role="dialog" aria-modal="true">
+            <div className="postcode-overlay-header">
+              <span className="postcode-overlay-title">주소 찾기</span>
+              <button
+                className="btn-postcode-close"
+                type="button"
+                onClick={handleClosePostcode}
+              >
+                닫기
+              </button>
+            </div>
+            <div
+              className="postcode-layer"
+              ref={postcodeLayerRef}
+              aria-label="우편번호 주소 검색"
+            />
+          </div>
+        )}
       </section>
 
       <section className="condition-section">
@@ -374,7 +387,7 @@ function HomePage() {
 
       <button
         className="btn-primary"
-        disabled={!canRecommend || isLoading}
+        disabled={!canRecommend || isLoading || isGeocodingAddress}
         onClick={handleRecommend}
       >
         {isLoading ? "생성 중..." : "코스 생성"}

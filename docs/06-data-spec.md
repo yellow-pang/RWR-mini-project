@@ -40,6 +40,12 @@ Step 22에서는 홈 화면이 단건 주소 변환 API가 아니라 후보 목�
 
 클라이언트는 검색어와 검색 결과 목록을 홈 화면 임시 상태로 관리하고, 사용자가 후보를 선택했을 때만 선택 주소와 좌표를 `routeLocation`에 저장한다. `POST /routes/address-round-trip` 요청은 이 선택된 주소/좌표를 기준으로 전송된다.
 
+### 2026.06.01 우편번호 서비스 기반 주소 선택 데이터 보정 기록
+
+Step 23에서는 주소 후보 목록을 서버 `POST /locations/search`가 아니라 클라이언트의 Kakao 우편번호 서비스 iframe 레이어에서 선택한다. 우편번호 서비스는 주소 선택까지만 담당하고, 좌표는 기존 서버 `POST /locations/geocode`를 통해 변환한다.
+
+클라이언트는 우편번호 서비스에서 받은 기본 도로명/지번 주소를 좌표 변환 API에 전달한다. 좌표 변환에 성공하면 선택 주소와 좌표를 `routeLocation`에 저장하고, 실패하면 저장하지 않는다. 상세주소, 우편번호, 건물명 등은 이번 단계에서 PostgreSQL 또는 전역 상태에 저장하지 않는다.
+
 ### DB 테이블 관계 (ERD)
 
 ```mermaid
@@ -298,6 +304,16 @@ GET /api/courses/route-001
 ---
 
 ### 위치/경로 생성 API
+
+#### Kakao 우편번호 서비스 — 주소 선택 UI
+
+홈 화면 주소 선택 UI는 Kakao 우편번호 서비스 스크립트를 iframe embed 방식으로 사용한다. 이 서비스는 클라이언트에서 주소 선택 UI만 제공하며, RWR 서버 DB에는 주소를 저장하지 않는다.
+
+```html
+https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js
+```
+
+선택된 주소는 아래 `POST /locations/geocode` API로 좌표 변환한다.
 
 #### `POST /locations/search` — 주소 검색 후보 목록 조회
 
