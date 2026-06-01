@@ -4,8 +4,8 @@ import "./TabBar.css";
 
 const items = [
   { to: "/", label: "홈", icon: "home", end: true },
-  { to: "/favorites", label: "즐겨찾기", icon: "star" },
-  { to: "/history", label: "이력", icon: "clock" },
+  { to: "/favorites", label: "즐겨찾기", icon: "heart" },
+  { to: "/history", label: "이력", icon: "history" },
 ];
 
 function TabBar() {

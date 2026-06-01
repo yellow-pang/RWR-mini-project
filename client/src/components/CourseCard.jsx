@@ -15,6 +15,7 @@ function CourseCard({
   const navigate = useNavigate();
   const courseId = course.courseId || course.id;
   const isGeneratedRoute = course.source === "ors";
+  const hasFavoriteAction = Boolean(onFavoriteToggle && !isGeneratedRoute);
 
   function handleDetail() {
     navigate(`/courses/${courseId}`, { state: { course } });
@@ -66,11 +67,11 @@ function CourseCard({
         </div>
       )}
 
-      <div className="course-actions">
+      <div className={`course-actions${hasFavoriteAction ? "" : " single"}`}>
         <button className="btn-detail" onClick={handleDetail}>
           상세 보기
         </button>
-        {onFavoriteToggle && !isGeneratedRoute && (
+        {hasFavoriteAction && (
           <button
             className={`favorite-btn${isFavorite ? " active" : ""}`}
             onClick={onFavoriteToggle}

@@ -8,6 +8,7 @@ import {
   TIME_OPTIONS,
   TYPE_OPTIONS,
 } from "../constants/courseOptions";
+import { getTypeIconName } from "../utils/courseDisplay";
 import {
   GPS_ADDRESS_FALLBACK_NOTICE,
   GPS_ADDRESS_NOTICE,
@@ -375,7 +376,7 @@ function HomePage() {
               className={`chip${conditions.type === opt.value ? " selected" : ""}`}
               onClick={() => handleSelect("type", opt.value)}
             >
-              <Icon name={opt.value === "walk" ? "foot" : "runner"} size={24} />
+              <Icon name={getTypeIconName(opt.value)} size={24} />
               {opt.label}
             </button>
           ))}

@@ -7,6 +7,14 @@ const ICON_PATHS = {
     </>
   ),
   back: <path d="m15 18-6-6 6-6" />,
+  backpack: (
+    <>
+      <path d="M8 7V5a4 4 0 0 1 8 0v2" />
+      <path d="M6.5 7h11A2.5 2.5 0 0 1 20 9.5V20H4V9.5A2.5 2.5 0 0 1 6.5 7Z" />
+      <path d="M8 13h8" />
+      <path d="M8 17h8" />
+    </>
+  ),
   bell: (
     <>
       <path d="M18 16H6l1.3-1.6V10a4.7 4.7 0 0 1 9.4 0v4.4L18 16Z" />
@@ -28,6 +36,13 @@ const ICON_PATHS = {
   heart: (
     <path d="M20 8.4c0 5-8 9.6-8 9.6S4 13.4 4 8.4A4.2 4.2 0 0 1 12 6a4.2 4.2 0 0 1 8 2.4Z" />
   ),
+  history: (
+    <>
+      <path d="M3 12a9 9 0 1 0 3-6.7" />
+      <path d="M3 4.5v5h5" />
+      <path d="M12 7.5V12l3 2" />
+    </>
+  ),
   home: (
     <>
       <path d="M4 11.5 12 5l8 6.5" />
@@ -40,6 +55,11 @@ const ICON_PATHS = {
       <circle cx="12" cy="12" r="8.5" />
       <path d="M12 11v5" />
       <path d="M12 8h.01" />
+    </>
+  ),
+  pulse: (
+    <>
+      <path d="M3 12h4l2-5 4 10 2-5h6" />
     </>
   ),
   menu: (
@@ -61,6 +81,22 @@ const ICON_PATHS = {
       <path d="m15 15 5 5" />
     </>
   ),
+  share2: (
+    <>
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="m8.6 10.5 6.8-4" />
+      <path d="m8.6 13.5 6.8 4" />
+    </>
+  ),
+  share: (
+    <>
+      <path d="M12 4v10" />
+      <path d="m8 8 4-4 4 4" />
+      <path d="M6 13v5a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-5" />
+    </>
+  ),
   runner: (
     <>
       <circle cx="14" cy="4.5" r="1.8" />
@@ -79,6 +115,15 @@ const ICON_PATHS = {
   ),
   star: (
     <path d="m12 4 2.4 5 5.4.8-3.9 3.8.9 5.4-4.8-2.6L7.2 19l.9-5.4-3.9-3.8 5.4-.8L12 4Z" />
+  ),
+  trophy: (
+    <>
+      <path d="M8 21h8" />
+      <path d="M12 17v4" />
+      <path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" />
+      <path d="M7 6H4a3 3 0 0 0 3 3" />
+      <path d="M17 6h3a3 3 0 0 1-3 3" />
+    </>
   ),
   trash: (
     <>

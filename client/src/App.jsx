@@ -15,6 +15,7 @@ function App() {
           <Route index element={<HomePage />} />
           <Route path="result" element={<ResultPage />} />
           <Route path="courses/:id" element={<DetailPage />} />
+          <Route path="detail/:id" element={<DetailPage />} />
           <Route path="favorites" element={<FavoritesPage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

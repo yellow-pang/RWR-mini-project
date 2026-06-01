@@ -6,7 +6,7 @@ import CourseCard from "../components/CourseCard";
 import Icon from "../components/Icon";
 import { useCourse } from "../hooks/useCourse";
 import { useFavoriteStatus } from "../hooks/useFavoriteStatus";
-import { getTypeLabel } from "../utils/courseDisplay";
+import { getTypeIconName, getTypeLabel } from "../utils/courseDisplay";
 import {
   HISTORY_SAVE_FAILED_MESSAGE,
   saveHistoryQuietly,
@@ -106,7 +106,11 @@ function ResultPage() {
               {conditions.time}분
             </span>
             <span className="condition-badge">
-              <Icon name="runner" size={24} className="icon-green" />
+              <Icon
+                name={getTypeIconName(conditions.type)}
+                size={24}
+                className="icon-green"
+              />
               {getTypeLabel(conditions.type)}
             </span>
           </div>

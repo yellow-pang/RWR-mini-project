@@ -18,8 +18,21 @@ const MOOD_LABELS = {
   숲길: "숲길",
 };
 
+const TYPE_ICON_NAMES = {
+  walk: "foot",
+  jogging: "pulse",
+  running: "runner",
+  걷기: "foot",
+  조깅: "pulse",
+  러닝: "runner",
+};
+
 export function getTypeLabel(type) {
   return TYPE_LABELS[type] || type || "";
+}
+
+export function getTypeIconName(type) {
+  return TYPE_ICON_NAMES[type] || "runner";
 }
 
 export function getMoodLabel(mood) {
