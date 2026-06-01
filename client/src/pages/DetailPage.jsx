@@ -8,6 +8,7 @@ import MapView from "../components/MapView";
 import { useCourse } from "../hooks/useCourse";
 import { useFavoriteStatus } from "../hooks/useFavoriteStatus";
 import { getMoodLabel, getTypeLabel } from "../utils/courseDisplay";
+import { getCourseShareId, shareCourse } from "../utils/share";
 
 function DetailPage() {
   const { id } = useParams();
@@ -19,8 +20,12 @@ function DetailPage() {
   );
   const [isLoading, setIsLoading] = useState(!course);
   const [message, setMessage] = useState("");
+  const [shareNotice, setShareNotice] = useState("");
+  const [shareError, setShareError] = useState("");
+  const [isSharing, setIsSharing] = useState(false);
   const isGeneratedRoute = course?.source === "ors";
   const favorite = useFavoriteStatus(isGeneratedRoute ? null : id);
+  const canShareCourse = Boolean(getCourseShareId(course));
 
   useEffect(() => {
     async function loadCourse() {
@@ -63,6 +68,26 @@ function DetailPage() {
     );
   }
 
+  async function handleShare() {
+    if (!canShareCourse || isSharing) return;
+
+    try {
+      setIsSharing(true);
+      setShareNotice("");
+      setShareError("");
+      const result = await shareCourse(course);
+      if (result.message) {
+        setShareNotice(result.message);
+      }
+    } catch (err) {
+      setShareError(
+        err.message || "코스 공유에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    } finally {
+      setIsSharing(false);
+    }
+  }
+
   return (
     <div className="page detail-page">
       <header className="page-header detail-header">
@@ -74,17 +99,32 @@ function DetailPage() {
         {isGeneratedRoute ? (
           <span />
         ) : (
-          <button
-            className={`header-icon-button detail-heart${favorite.isFavorite ? " active" : ""}`}
-            onClick={favorite.toggleFavorite}
-            aria-label={favorite.isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-          >
-            <Icon name="heart" size={29} filled={favorite.isFavorite} />
-          </button>
+          <div className="detail-actions">
+            <button
+              className={`header-icon-button detail-heart${favorite.isFavorite ? " active" : ""}`}
+              onClick={favorite.toggleFavorite}
+              aria-label={favorite.isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+            >
+              <Icon name="heart" size={29} filled={favorite.isFavorite} />
+            </button>
+            {canShareCourse && (
+              <button
+                className="header-icon-button detail-share"
+                type="button"
+                onClick={handleShare}
+                disabled={isSharing}
+                aria-label="코스 공유"
+              >
+                <Icon name="share" size={27} />
+              </button>
+            )}
+          </div>
         )}
       </header>
 
       {message && <p className="form-error">{message}</p>}
+      {shareError && <p className="form-error">{shareError}</p>}
+      {shareNotice && <p className="form-notice">{shareNotice}</p>}
       {favorite.message && <p className="form-error">{favorite.message}</p>}
       {favorite.noticeMessage && (
         <p className="form-notice">{favorite.noticeMessage}</p>

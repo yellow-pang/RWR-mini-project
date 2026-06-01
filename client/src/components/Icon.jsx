@@ -61,6 +61,13 @@ const ICON_PATHS = {
       <path d="m15 15 5 5" />
     </>
   ),
+  share: (
+    <>
+      <path d="M12 4v10" />
+      <path d="m8 8 4-4 4 4" />
+      <path d="M6 13v5a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-5" />
+    </>
+  ),
   runner: (
     <>
       <circle cx="14" cy="4.5" r="1.8" />

@@ -754,6 +754,7 @@ a {
 }
 
 .detail-header {
+  grid-template-columns: 42px 1fr auto;
   height: 52px;
   margin-bottom: 14px;
 }
@@ -768,6 +769,21 @@ a {
 
 .detail-heart {
   color: var(--color-primary);
+}
+
+.detail-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.detail-share {
+  color: var(--color-primary-dark);
+}
+
+.detail-share:disabled {
+  opacity: 0.5;
 }
 
 .detail-pill {
