@@ -46,7 +46,7 @@ function CourseCard({
           <span className="course-badge mood">{getMoodLabel(course.mood)}</span>
         )}
         {isGeneratedRoute && (
-          <span className="course-badge mood">GPS 생성</span>
+          <span className="course-badge mood">주소 생성</span>
         )}
       </div>
 

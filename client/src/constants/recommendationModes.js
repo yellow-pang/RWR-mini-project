@@ -1,26 +1,15 @@
-export const RECOMMENDATION_MODES = {
-  RANDOM_DB: "random_db",
-  GPS_ROUTE: "gps_route",
-};
+export const ADDRESS_ROUTE_NOTICE =
+  "입력한 주소를 기준으로 실제 도로망을 따라 순환 코스를 생성했습니다.";
 
-export const RECOMMENDATION_MODE_OPTIONS = [
-  {
-    value: RECOMMENDATION_MODES.RANDOM_DB,
-    label: "랜덤 코스",
-    description: "저장된 코스 중 조건에 맞게 추천",
-  },
-  {
-    value: RECOMMENDATION_MODES.GPS_ROUTE,
-    label: "GPS 자동 추천",
-    description: "현재 위치에서 순환 경로 생성",
-  },
-];
+export const ADDRESS_FALLBACK_NOTICE =
+  "경로 생성이 원활하지 않아 입력 위치와 가까운 저장 코스로 추천했습니다.";
 
-export const GPS_FALLBACK_NOTICE =
-  "GPS 경로 생성이 원활하지 않아 기존 랜덤 코스로 추천했습니다.";
+export const GPS_LOCATION_NOTICE = "현재 위치를 기준 위치로 입력했습니다.";
 
-export const GPS_PERMISSION_FALLBACK_NOTICE =
-  "위치 확인을 사용할 수 없어 기존 랜덤 코스로 추천했습니다.";
+export const GPS_ADDRESS_NOTICE = "현재 위치의 주소를 입력칸에 채웠습니다.";
 
-export const GPS_ROUTE_NOTICE =
-  "현재 위치를 기준으로 실제 도로망을 따라 순환 코스를 생성했습니다.";
+export const GPS_ADDRESS_FALLBACK_NOTICE =
+  "현재 위치 좌표를 기준으로 사용합니다. 주소는 직접 입력해도 됩니다.";
+
+export const GPS_PERMISSION_NOTICE =
+  "위치 확인을 사용할 수 없습니다. 주소를 직접 입력해 주세요.";

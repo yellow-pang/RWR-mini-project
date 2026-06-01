@@ -1,20 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFriendlyErrorMessage } from "../api/client";
-import { fetchRandomCourse } from "../api/courses";
-import { createRoundTripRoute } from "../api/routes";
+import { createAddressRoundTripRoute } from "../api/routes";
 import CourseCard from "../components/CourseCard";
 import Icon from "../components/Icon";
-import {
-  GPS_FALLBACK_NOTICE,
-  GPS_PERMISSION_FALLBACK_NOTICE,
-  GPS_ROUTE_NOTICE,
-  RECOMMENDATION_MODES,
-} from "../constants/recommendationModes";
 import { useCourse } from "../hooks/useCourse";
 import { useFavoriteStatus } from "../hooks/useFavoriteStatus";
 import { getTypeLabel } from "../utils/courseDisplay";
-import { getCurrentPosition } from "../utils/geolocation";
 import {
   HISTORY_SAVE_FAILED_MESSAGE,
   saveHistoryQuietly,
@@ -26,7 +18,7 @@ function ResultPage() {
     conditions,
     currentCourse,
     setCurrentCourse,
-    recommendationMode,
+    routeLocation,
     recommendationMeta,
     setRecommendationMeta,
   } = useCourse();
@@ -46,44 +38,17 @@ function ResultPage() {
       setRetryMessage("");
       setHistoryNotice("");
 
-      let response;
-
-      if (recommendationMode === RECOMMENDATION_MODES.GPS_ROUTE) {
-        try {
-          const position = await getCurrentPosition();
-          response = await createRoundTripRoute({
-            ...conditions,
-            latitude: position.latitude,
-            longitude: position.longitude,
-            seed: Date.now(),
-          });
-          setRecommendationMeta({
-            mode: RECOMMENDATION_MODES.GPS_ROUTE,
-            usedFallback: false,
-            notice: GPS_ROUTE_NOTICE,
-          });
-        } catch (gpsError) {
-          response = await fetchRandomCourse({
-            ...conditions,
-            exclude: isGeneratedRoute ? undefined : course?.id,
-          });
-          setRecommendationMeta({
-            mode: RECOMMENDATION_MODES.GPS_ROUTE,
-            usedFallback: true,
-            notice:
-              gpsError?.name === "GeolocationError"
-                ? GPS_PERMISSION_FALLBACK_NOTICE
-                : GPS_FALLBACK_NOTICE,
-          });
-        }
-      } else {
-        response = await fetchRandomCourse({
-          ...conditions,
-          exclude: course?.id,
-        });
-      }
+      const response = await createAddressRoundTripRoute({
+        ...conditions,
+        address: routeLocation.address,
+        latitude: routeLocation.latitude,
+        longitude: routeLocation.longitude,
+        seed: Date.now(),
+        exclude: isGeneratedRoute ? undefined : course?.id,
+      });
 
       setCurrentCourse(response.data);
+      setRecommendationMeta(response.meta || null);
 
       const historySaved =
         response.data.source === "ors" ||

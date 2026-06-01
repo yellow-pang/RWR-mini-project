@@ -20,3 +20,28 @@ export async function createRoundTripRoute({
     }),
   });
 }
+
+export async function createAddressRoundTripRoute({
+  address,
+  latitude,
+  longitude,
+  distance,
+  time,
+  type,
+  seed,
+  exclude,
+}) {
+  return requestJson(buildUrl("/routes/address-round-trip"), {
+    method: "POST",
+    body: JSON.stringify({
+      address,
+      latitude,
+      longitude,
+      distance,
+      time,
+      type,
+      seed,
+      exclude,
+    }),
+  });
+}

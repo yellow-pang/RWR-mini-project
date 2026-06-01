@@ -1,19 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFriendlyErrorMessage } from "../api/client";
-import { fetchRandomCourse } from "../api/courses";
-import { createRoundTripRoute } from "../api/routes";
+import { reverseGeocodeLocation } from "../api/locations";
+import { createAddressRoundTripRoute } from "../api/routes";
 import {
   DISTANCE_OPTIONS,
   TIME_OPTIONS,
   TYPE_OPTIONS,
 } from "../constants/courseOptions";
 import {
-  GPS_FALLBACK_NOTICE,
-  GPS_PERMISSION_FALLBACK_NOTICE,
-  GPS_ROUTE_NOTICE,
-  RECOMMENDATION_MODE_OPTIONS,
-  RECOMMENDATION_MODES,
+  GPS_ADDRESS_FALLBACK_NOTICE,
+  GPS_ADDRESS_NOTICE,
+  GPS_LOCATION_NOTICE,
+  GPS_PERMISSION_NOTICE,
 } from "../constants/recommendationModes";
 import { useCourse } from "../hooks/useCourse";
 import Icon from "../components/Icon";
@@ -29,8 +28,8 @@ function HomePage() {
     conditions,
     setConditions,
     setCurrentCourse,
-    recommendationMode,
-    setRecommendationMode,
+    routeLocation,
+    setRouteLocation,
     setRecommendationMeta,
   } = useCourse();
   const [isLoading, setIsLoading] = useState(false);
@@ -41,6 +40,10 @@ function HomePage() {
     conditions.distance !== null &&
     conditions.time !== null &&
     conditions.type !== null;
+  const hasLocation =
+    routeLocation.address.trim().length > 0 ||
+    (routeLocation.latitude !== null && routeLocation.longitude !== null);
+  const canRecommend = allSelected && hasLocation;
 
   function clearMessages() {
     setErrorMessage("");
@@ -52,57 +55,75 @@ function HomePage() {
     setConditions((prev) => ({ ...prev, [key]: value }));
   }
 
+  function handleAddressChange(event) {
+    clearMessages();
+    setRecommendationMeta(null);
+    setRouteLocation({
+      address: event.target.value,
+      latitude: null,
+      longitude: null,
+      source: "address-input",
+    });
+  }
+
   function handleReset() {
     clearMessages();
     setConditions({ distance: null, time: null, type: null });
+    setRouteLocation({
+      address: "",
+      latitude: null,
+      longitude: null,
+      source: null,
+    });
     setRecommendationMeta(null);
   }
 
+  async function handleUseCurrentLocation() {
+    if (isLoading) return;
+
+    try {
+      setIsLoading(true);
+      clearMessages();
+      const position = await getCurrentPosition();
+
+      try {
+        const response = await reverseGeocodeLocation(position);
+        setRouteLocation(response.data);
+        setNoticeMessage(GPS_ADDRESS_NOTICE);
+      } catch {
+        setRouteLocation({
+          address: "현재 위치 기준",
+          latitude: position.latitude,
+          longitude: position.longitude,
+          source: "gps",
+        });
+        setNoticeMessage(GPS_ADDRESS_FALLBACK_NOTICE);
+      }
+    } catch {
+      setNoticeMessage(GPS_PERMISSION_NOTICE);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   async function handleRecommend() {
-    if (!allSelected || isLoading) return;
+    if (!canRecommend || isLoading) return;
 
     try {
       setIsLoading(true);
       clearMessages();
       setRecommendationMeta(null);
 
-      let response;
-
-      if (recommendationMode === RECOMMENDATION_MODES.GPS_ROUTE) {
-        try {
-          const position = await getCurrentPosition();
-          response = await createRoundTripRoute({
-            ...conditions,
-            latitude: position.latitude,
-            longitude: position.longitude,
-            seed: Date.now(),
-          });
-          setRecommendationMeta({
-            mode: RECOMMENDATION_MODES.GPS_ROUTE,
-            usedFallback: false,
-            notice: GPS_ROUTE_NOTICE,
-          });
-        } catch (gpsError) {
-          response = await fetchRandomCourse(conditions);
-          setRecommendationMeta({
-            mode: RECOMMENDATION_MODES.GPS_ROUTE,
-            usedFallback: true,
-            notice:
-              gpsError?.name === "GeolocationError"
-                ? GPS_PERMISSION_FALLBACK_NOTICE
-                : GPS_FALLBACK_NOTICE,
-          });
-        }
-      } else {
-        response = await fetchRandomCourse(conditions);
-        setRecommendationMeta({
-          mode: RECOMMENDATION_MODES.RANDOM_DB,
-          usedFallback: false,
-          notice: "",
-        });
-      }
+      const response = await createAddressRoundTripRoute({
+        ...conditions,
+        address: routeLocation.address.trim(),
+        latitude: routeLocation.latitude,
+        longitude: routeLocation.longitude,
+        seed: Date.now(),
+      });
 
       setCurrentCourse(response.data);
+      setRecommendationMeta(response.meta || null);
 
       const historySaved =
         response.data.source === "ors" ||
@@ -141,6 +162,35 @@ function HomePage() {
       </header>
 
       <h1 className="home-title">오늘은 어디로 걸어볼까요?</h1>
+
+      <section className="condition-section">
+        <h2 className="condition-title">
+          <Icon name="pin" size={28} className="icon-green" />
+          출발 주소
+        </h2>
+        <div className="address-input-row">
+          <input
+            className="address-input"
+            type="text"
+            value={routeLocation.address}
+            onChange={handleAddressChange}
+            placeholder="예: 서울 성동구 왕십리로 63"
+            aria-label="출발 주소"
+          />
+          <button
+            className="btn-location"
+            type="button"
+            onClick={handleUseCurrentLocation}
+            disabled={isLoading}
+          >
+            현재 위치
+          </button>
+        </div>
+        {routeLocation.latitude !== null &&
+          routeLocation.longitude !== null && (
+            <p className="address-helper">{GPS_LOCATION_NOTICE}</p>
+          )}
+      </section>
 
       <section className="condition-section">
         <h2 className="condition-title">
@@ -197,40 +247,15 @@ function HomePage() {
         </div>
       </section>
 
-      <section className="condition-section">
-        <h2 className="condition-title">
-          <Icon name="pin" size={28} className="icon-green" />
-          추천 방식
-        </h2>
-        <div className="recommendation-mode-group">
-          {RECOMMENDATION_MODE_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              className={`recommendation-mode${recommendationMode === opt.value ? " selected" : ""}`}
-              onClick={() => {
-                clearMessages();
-                setRecommendationMeta(null);
-                setRecommendationMode(opt.value);
-              }}
-            >
-              <span className="recommendation-mode-label">{opt.label}</span>
-              <span className="recommendation-mode-desc">
-                {opt.description}
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
-
       {errorMessage && <p className="form-error">{errorMessage}</p>}
       {noticeMessage && <p className="form-notice">{noticeMessage}</p>}
 
       <button
         className="btn-primary"
-        disabled={!allSelected || isLoading}
+        disabled={!canRecommend || isLoading}
         onClick={handleRecommend}
       >
-        {isLoading ? "추천 중..." : "코스 추천받기!"}
+        {isLoading ? "생성 중..." : "코스 생성"}
       </button>
       <button className="btn-reset" onClick={handleReset}>
         초기화
