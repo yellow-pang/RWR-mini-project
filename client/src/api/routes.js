@@ -31,17 +31,28 @@ export async function createAddressRoundTripRoute({
   seed,
   exclude,
 }) {
+  const body = {
+    address,
+    distance,
+    time,
+    type,
+    seed,
+  };
+
+  if (latitude !== null && latitude !== undefined) {
+    body.latitude = latitude;
+  }
+
+  if (longitude !== null && longitude !== undefined) {
+    body.longitude = longitude;
+  }
+
+  if (exclude) {
+    body.exclude = exclude;
+  }
+
   return requestJson(buildUrl("/routes/address-round-trip"), {
     method: "POST",
-    body: JSON.stringify({
-      address,
-      latitude,
-      longitude,
-      distance,
-      time,
-      type,
-      seed,
-      exclude,
-    }),
+    body: JSON.stringify(body),
   });
 }

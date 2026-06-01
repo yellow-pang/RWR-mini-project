@@ -52,12 +52,12 @@ router.post(
       .isLength({ min: 2, max: 200 })
       .withMessage("주소는 2자 이상 200자 이하로 입력해 주세요."),
     body("latitude")
-      .optional()
+      .optional({ values: "null" })
       .isFloat({ min: -90, max: 90 })
       .withMessage("latitude는 -90~90 사이의 숫자여야 합니다.")
       .toFloat(),
     body("longitude")
-      .optional()
+      .optional({ values: "null" })
       .isFloat({ min: -180, max: 180 })
       .withMessage("longitude는 -180~180 사이의 숫자여야 합니다.")
       .toFloat(),
@@ -65,7 +65,8 @@ router.post(
       const hasAddress =
         typeof value.address === "string" && value.address.trim().length >= 2;
       const hasCoordinates =
-        value.latitude !== undefined && value.longitude !== undefined;
+        Number.isFinite(Number(value.latitude)) &&
+        Number.isFinite(Number(value.longitude));
 
       if (!hasAddress && !hasCoordinates) {
         throw new Error("주소 또는 현재 위치 좌표가 필요합니다.");
