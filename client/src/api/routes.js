@@ -20,3 +20,39 @@ export async function createRoundTripRoute({
     }),
   });
 }
+
+export async function createAddressRoundTripRoute({
+  address,
+  latitude,
+  longitude,
+  distance,
+  time,
+  type,
+  seed,
+  exclude,
+}) {
+  const body = {
+    address,
+    distance,
+    time,
+    type,
+    seed,
+  };
+
+  if (latitude !== null && latitude !== undefined) {
+    body.latitude = latitude;
+  }
+
+  if (longitude !== null && longitude !== undefined) {
+    body.longitude = longitude;
+  }
+
+  if (exclude) {
+    body.exclude = exclude;
+  }
+
+  return requestJson(buildUrl("/routes/address-round-trip"), {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}

@@ -26,6 +26,14 @@
 
 Step 18에서 최종 목표를 재검토한 결과, GPS 기반 기능은 단순히 저장된 코스의 가까운 순 정렬이 아니라 현재 위치와 목표 조건을 바탕으로 랜덤 운동 코스를 생성/추천하는 방향으로 정리했다. 다만 Step 18에서는 생성형 코스를 DB에 저장하지 않는다. 생성된 경로 좌표, 경로 타입, 외부 라우팅 응답, 개인정보 보존 정책은 ORS 연동 및 저장 정책을 다루는 후속 단계에서 별도 스키마 확장 대상으로 검토한다.
 
+### 2026.06.01 주소 기준 경로 생성 데이터 보정 기록
+
+Step 21에서는 추천 기준점이 `GPS 현재 위치`에서 `사용자 입력 주소`로 변경되었다. 서버는 카카오 Local REST API로 주소를 좌표로 변환하고, 해당 좌표를 ORS Round Trip API에 전달해 생성형 순환 경로를 만든다.
+
+GPS는 주소 입력 보조 수단으로 사용한다. 사용자가 `현재 위치 사용`을 누르면 Geolocation API로 좌표를 얻고, 서버가 카카오 좌표→주소 변환을 시도한다. 변환 성공 시 주소 입력칸을 채우고, 실패해도 좌표를 기준점으로 사용할 수 있다.
+
+fallback을 위해 `courses` 테이블의 `start_lat`, `start_lng` 좌표를 사용한다. 주소 기준 ORS 경로 생성이 실패하면 서버는 입력 좌표와 저장 코스 시작 좌표 간 Haversine 거리를 계산하고, 가까운 후보군 중 하나를 랜덤 선택한다. 선택된 코스 좌표로 ORS 경로 생성을 한 번 더 시도하며, 그것도 실패하면 저장 코스 자체를 추천 결과로 반환한다.
+
 ### DB 테이블 관계 (ERD)
 
 ```mermaid
@@ -41,6 +49,8 @@ erDiagram
         text reason "추천 이유"
         text caution "주의사항"
         text tip "준비 팁"
+        numeric start_lat "시작점 위도"
+        numeric start_lng "시작점 경도"
         timestamp created_at "생성 시각"
     }
 
@@ -76,6 +86,8 @@ erDiagram
 | `reason`      | `TEXT`         | 1문장 추천 이유                           | `'평지 위주로...'`    |
 | `caution`     | `TEXT`         | 1~2문장 주의사항                          | `'주말 오전 혼잡...'` |
 | `tip`         | `TEXT`         | 1~2문장 준비 팁                           | `'물 500ml 이상...'`  |
+| `start_lat`   | `NUMERIC(9,6)` | 시작점 위도, fallback 거리 계산에 사용    | `37.544700`           |
+| `start_lng`   | `NUMERIC(9,6)` | 시작점 경도, fallback 거리 계산에 사용    | `127.037400`          |
 | `created_at`  | `TIMESTAMP`    | DEFAULT NOW()                             | -                     |
 
 ### favorites / history 테이블 필드 상세
@@ -111,6 +123,8 @@ CREATE TABLE IF NOT EXISTS courses (
   reason       TEXT         NOT NULL,
   caution      TEXT         NOT NULL,
   tip          TEXT         NOT NULL,
+  start_lat    NUMERIC(9,6),
+  start_lng    NUMERIC(9,6),
   created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
@@ -274,6 +288,61 @@ GET /api/courses/random?distance=3&time=30&type=jogging&exclude=route-001
 ```
 GET /api/courses/route-001
 ```
+
+---
+
+### 위치/경로 생성 API
+
+#### `POST /locations/geocode` — 주소를 좌표로 변환
+
+카카오 Local REST API를 서버 프록시로 호출한다.
+
+```json
+// Request Body
+{ "address": "서울 성동구 왕십리로 63" }
+```
+
+```json
+// Response
+{
+  "success": true,
+  "data": {
+    "address": "서울 성동구 왕십리로 63",
+    "latitude": 37.5446,
+    "longitude": 127.0374,
+    "source": "kakao-address"
+  }
+}
+```
+
+#### `POST /locations/reverse-geocode` — 좌표를 주소로 변환
+
+GPS 입력 보조용 API다. 실패해도 좌표 자체는 추천 기준점으로 사용할 수 있다.
+
+```json
+// Request Body
+{ "latitude": 37.5446, "longitude": 127.0374 }
+```
+
+#### `POST /routes/address-round-trip` — 주소/좌표 기준 랜덤 순환 경로 생성
+
+주소 또는 좌표를 기준으로 ORS Round Trip 경로를 생성한다. 좌표가 있으면 좌표를 우선 사용하고, 좌표가 없으면 주소를 카카오 Local API로 변환한다.
+
+```json
+// Request Body
+{
+  "address": "서울 성동구 왕십리로 63",
+  "latitude": 37.5446,
+  "longitude": 127.0374,
+  "distance": 3,
+  "time": 30,
+  "type": "jogging",
+  "seed": 42,
+  "exclude": "route-001"
+}
+```
+
+응답은 생성형 ORS 코스 또는 가까운 DB fallback 코스를 반환한다. fallback 여부는 `meta.usedFallback`으로 확인한다.
 
 ---
 

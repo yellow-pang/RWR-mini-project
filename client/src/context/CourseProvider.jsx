@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { RECOMMENDATION_MODES } from "../constants/recommendationModes";
 import { CourseContext } from "./courseContext";
 
 export function CourseProvider({ children }) {
@@ -9,9 +8,12 @@ export function CourseProvider({ children }) {
     type: null,
   });
   const [currentCourse, setCurrentCourse] = useState(null);
-  const [recommendationMode, setRecommendationMode] = useState(
-    RECOMMENDATION_MODES.RANDOM_DB,
-  );
+  const [routeLocation, setRouteLocation] = useState({
+    address: "",
+    latitude: null,
+    longitude: null,
+    source: null,
+  });
   const [recommendationMeta, setRecommendationMeta] = useState(null);
 
   return (
@@ -21,8 +23,8 @@ export function CourseProvider({ children }) {
         setConditions,
         currentCourse,
         setCurrentCourse,
-        recommendationMode,
-        setRecommendationMode,
+        routeLocation,
+        setRouteLocation,
         recommendationMeta,
         setRecommendationMeta,
       }}

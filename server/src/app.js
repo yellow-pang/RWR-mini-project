@@ -38,11 +38,13 @@ app.get("/api/health", (req, res) => {
 const coursesRouter = require("./routes/courses");
 const favoritesRouter = require("./routes/favorites");
 const historyRouter = require("./routes/history");
+const locationsRouter = require("./routes/locations");
 const routesRouter = require("./routes/routes");
 
 app.use("/api/courses", coursesRouter);
 app.use("/api/favorites", favoritesRouter);
 app.use("/api/history", historyRouter);
+app.use("/api/locations", locationsRouter);
 app.use("/api/routes", routesRouter);
 
 app.use((req, res) => {

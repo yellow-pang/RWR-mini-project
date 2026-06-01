@@ -5,7 +5,14 @@ const ORS_PROFILE_BY_TYPE = {
   running: "foot-walking",
 };
 
-function buildGeneratedCourse({ route, distance, time, type, seed }) {
+function buildGeneratedCourse({
+  route,
+  distance,
+  time,
+  type,
+  seed,
+  originLabel = "입력 위치",
+}) {
   const feature = route.features?.[0];
   const coordinates = feature?.geometry?.coordinates;
   const summary = feature?.properties?.summary || {};
@@ -23,7 +30,7 @@ function buildGeneratedCourse({ route, distance, time, type, seed }) {
 
   return {
     id: `generated-ors-${Date.now()}`,
-    title: "GPS 자동 추천 코스",
+    title: "주소 기준 랜덤 코스",
     distance: distanceKm,
     time,
     type,
@@ -40,8 +47,7 @@ function buildGeneratedCourse({ route, distance, time, type, seed }) {
       distance: summary.distance || distance * 1000,
       duration: summary.duration || null,
     },
-    description:
-      "현재 위치를 출발점으로 ORS가 실제 도로망을 따라 생성한 순환 운동 코스입니다.",
+    description: `${originLabel}을 출발점으로 ORS가 실제 도로망을 따라 생성한 순환 운동 코스입니다.`,
     reason:
       "선택한 거리와 운동 유형을 바탕으로 매일 다른 방향의 코스를 추천합니다.",
     caution:
@@ -57,6 +63,7 @@ exports.createRoundTrip = async ({
   time,
   type,
   seed,
+  originLabel,
 }) => {
   const apiKey = process.env.ORS_API_KEY;
 
@@ -103,5 +110,6 @@ exports.createRoundTrip = async ({
     time,
     type,
     seed,
+    originLabel,
   });
 };
