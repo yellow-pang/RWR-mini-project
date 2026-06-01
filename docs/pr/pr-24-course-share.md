@@ -27,9 +27,11 @@
 
 코스 상세 화면에 공유 버튼을 추가했다.
 
-사용자가 저장된 DB 코스 상세 화면에서 공유 버튼을 누르면, Web Share API 지원 환경에서는 브라우저/OS 기본 공유창을 호출한다. Web Share API 미지원 또는 호출 실패 시에는 Clipboard API로 `/detail/:id` 형식의 코스 딥링크를 복사하고 성공 안내 메시지를 표시한다.
+사용자가 코스 상세 화면에서 공유 버튼을 누르면, Web Share API 지원 환경에서는 브라우저/OS 기본 공유창을 호출한다. Web Share API 미지원 또는 호출 실패 시에는 Clipboard API로 공유 URL을 복사하고 성공 안내 메시지를 표시한다.
 
-기존 상세 경로 `/courses/:id`는 유지하고, 공유용 딥링크로 `/detail/:id` 라우트 alias를 추가했다.
+저장된 DB 코스는 `/detail/:id` 딥링크를 공유한다. 생성형 ORS 코스는 아직 안정적인 복원 ID가 없으므로 코스 요약 문구와 서비스 URL을 공유하고, 즐겨찾기 버튼은 노출하지 않는다.
+
+기존 상세 경로 `/courses/:id`는 유지하고, 공유용 딥링크로 `/detail/:id` 라우트 alias를 추가했다. 이 과정에서 Step 23 이후 틀어진 상세/결과 화면 버튼, 운동 유형 아이콘, 상세 정보 섹션 아이콘도 함께 보정했다.
 
 ---
 
@@ -39,7 +41,14 @@
 | ---- | ------------------------------------ | ----------------------------------------------------- |
 | 수정 | `client/src/App.jsx`                 | `/detail/:id` 상세 라우트 alias 추가                  |
 | 수정 | `client/src/pages/DetailPage.jsx`    | 공유 버튼, 공유 처리 핸들러, 공유 성공/실패 안내 추가 |
-| 수정 | `client/src/components/Icon.jsx`     | 공유 아이콘 추가                                      |
+| 수정 | `client/src/pages/HomePage.jsx`      | 운동 유형별 아이콘 표시 기준 통일                     |
+| 수정 | `client/src/pages/ResultPage.jsx`    | 결과 조건 요약의 운동 유형 아이콘 보정                |
+| 수정 | `client/src/components/CourseCard.jsx` | 생성형 코스 카드에서 즐겨찾기 숨김 및 상세 버튼 폭 보정 |
+| 수정 | `client/src/components/CourseCard.css` | 단일 액션 버튼 레이아웃 추가                         |
+| 수정 | `client/src/components/CourseInfo.jsx` | 코스 소개/추천 이유/주의사항/준비 팁 아이콘 보정     |
+| 수정 | `client/src/components/Icon.jsx`     | 공유/하단 탭/상세 정보용 outline 아이콘 추가          |
+| 수정 | `client/src/components/TabBar.jsx`   | 홈/즐겨찾기/이력 탭 아이콘 보정                       |
+| 수정 | `client/src/utils/courseDisplay.js`  | 운동 유형별 아이콘 매핑 유틸 추가                     |
 | 신규 | `client/src/utils/share.js`          | Web Share API + Clipboard fallback 공유 유틸 추가     |
 | 수정 | `client/src/index.css`               | 상세 헤더 액션 버튼 레이아웃과 공유 버튼 스타일 추가  |
 | 수정 | `client/index.html`                  | 서비스 공통 description/OG 메타 태그 추가             |
@@ -62,12 +71,24 @@ RWR은 추천 코스를 확인하고 저장할 수 있지만, 코스를 다른 �
 ## 동작 설명
 
 - DB 코스 상세 화면에서 헤더 오른쪽에 즐겨찾기 버튼과 공유 버튼을 표시한다.
+- 생성형 ORS 코스 상세 화면에서는 공유 버튼만 표시하고 즐겨찾기 버튼은 숨긴다.
 - 공유 버튼 클릭 시 공유 payload를 생성한다.
-- 공유 URL은 `window.location.origin` 기준 `/detail/:id`로 생성한다.
+- DB 코스 공유 URL은 `window.location.origin` 기준 `/detail/:id`로 생성한다.
+- 생성형 ORS 코스는 코스명, 거리, 시간 요약 문구와 서비스 URL을 공유한다.
 - `navigator.share`가 있으면 Web Share API를 먼저 호출한다.
 - Web Share API 미지원 또는 실패 시 `navigator.clipboard.writeText`로 공유 URL을 복사한다.
 - 클립보드 복사 성공 시 `코스 링크가 클립보드에 복사되었습니다!` 안내를 표시한다.
-- 생성형 ORS 코스는 영속 딥링크가 없으므로 공유 버튼을 표시하지 않는다.
+
+---
+
+## UI 보정
+
+- 걷기/조깅/러닝 아이콘을 각각 발자국, 심박/펄스, 러너 아이콘으로 구분했다.
+- 상세 화면의 코스 소개, 추천 이유, 주의사항, 준비 팁 아이콘을 outline 계열로 정리했다.
+- 주의사항은 삼각형 느낌표 아이콘으로 변경했다.
+- 하단 탭의 홈, 즐겨찾기, 이력 아이콘을 채색 없는 outline 스타일로 맞췄다.
+- 생성형 ORS 코스 결과 카드에서는 즐겨찾기 버튼을 숨기고 `상세 보기` 버튼이 전체 폭을 사용하도록 보정했다.
+- 주소 기반 생성형 코스의 즐겨찾기는 기존 DB 코스 즐겨찾기와 목적이 달라질 수 있어 후속 단계에서 기능 정책을 다시 정의한다.
 
 ---
 
@@ -91,6 +112,9 @@ npm.cmd --prefix client run build
 | 클라이언트 Lint      | 성공                               |
 | 클라이언트 Build     | 성공                               |
 | `/detail/:id` 라우트 | 확인                               |
+| 생성형 코스 공유 버튼 | 확인                               |
+| 생성형 코스 상세 버튼 폭 | 확인                               |
+| 상세/탭 아이콘 보정 | 확인                               |
 | Clipboard fallback   | 확인 필요                          |
 | 모바일 Web Share API | 실제 모바일 브라우저에서 확인 필요 |
 
@@ -100,5 +124,6 @@ npm.cmd --prefix client run build
 
 - 실제 모바일 Safari/Chrome에서 Web Share API 공유창 동작 확인
 - PC 브라우저에서 Clipboard API fallback 동작 확인
-- 생성형 ORS 코스 저장 정책이 정리되면 생성형 코스 공유 지원 검토
+- 주소 기반 생성형 코스 저장/즐겨찾기 정책 재정의
+- 생성형 ORS 코스 저장 정책이 정리되면 `/detail/:id` 딥링크 공유 지원 검토
 - 코스별 OG preview가 필요하면 서버 렌더링 또는 공유 전용 endpoint 검토

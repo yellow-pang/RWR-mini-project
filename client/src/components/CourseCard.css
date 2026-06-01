@@ -149,6 +149,10 @@
   gap: 14px;
 }
 
+.course-actions.single {
+  grid-template-columns: 1fr;
+}
+
 .btn-detail {
   display: inline-flex;
   min-height: 54px;
@@ -170,6 +174,10 @@
 
 .course-card:not(.featured) .course-actions {
   display: flex;
+}
+
+.course-card:not(.featured) .course-actions.single .btn-detail {
+  width: 100%;
 }
 
 .course-card:not(.featured) .btn-detail,

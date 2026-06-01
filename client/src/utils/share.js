@@ -10,12 +10,12 @@ export class ShareError extends Error {
 }
 
 export function getCourseShareId(course) {
-  if (!course || course.source === "ors") return null;
+  if (!course) return null;
   return course.courseId || course.id || null;
 }
 
 export function buildCourseShareUrl(courseId) {
-  if (!courseId) {
+  if (!courseId || String(courseId).startsWith("generated-")) {
     throw new ShareError("공유할 코스 ID를 확인하지 못했습니다.");
   }
 
@@ -28,11 +28,18 @@ export function buildCourseShareUrl(courseId) {
 export function buildCourseSharePayload(course) {
   const courseId = getCourseShareId(course);
   const typeLabel = getTypeLabel(course?.type);
-  const url = buildCourseShareUrl(courseId);
+  const isGeneratedRoute = course?.source === "ors";
+  const url = isGeneratedRoute
+    ? window.location.origin
+    : buildCourseShareUrl(courseId);
+  const title = `RWR 오늘의 추천 ${typeLabel} 코스`;
+  const text = isGeneratedRoute
+    ? `${course.title} 코스 어때요? ${course.distance}km, ${course.time}분 코스로 함께 걸어봐요!`
+    : `${course.title} 코스 어때요? 함께 걸어봐요!`;
 
   return {
-    title: `RWR 오늘의 추천 ${typeLabel} 코스`,
-    text: `${course.title} 코스 어때요? 함께 걸어봐요!`,
+    title,
+    text,
     url,
   };
 }
