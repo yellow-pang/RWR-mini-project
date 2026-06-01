@@ -39,6 +39,29 @@ async function requestKakao(path, params) {
   return payload;
 }
 
+function mapAddressDocument(result, index) {
+  const roadAddress = result.road_address?.address_name || "";
+  const jibunAddress = result.address?.address_name || "";
+  const address = roadAddress || result.address_name || jibunAddress;
+  const region = result.address
+    ? [result.address.region_1depth_name, result.address.region_2depth_name]
+        .filter(Boolean)
+        .join(" ")
+    : "";
+
+  return {
+    id: `kakao-address-${index}`,
+    address,
+    roadAddress,
+    jibunAddress,
+    buildingName: result.road_address?.building_name || "",
+    region,
+    latitude: Number(result.y),
+    longitude: Number(result.x),
+    source: "kakao-address",
+  };
+}
+
 exports.geocodeAddress = async (address) => {
   const payload = await requestKakao("/search/address.json", {
     query: address,
@@ -57,6 +80,23 @@ exports.geocodeAddress = async (address) => {
     longitude: Number(result.x),
     source: "kakao-address",
   };
+};
+
+exports.searchAddresses = async (query) => {
+  const payload = await requestKakao("/search/address.json", {
+    query,
+    size: 10,
+  });
+
+  return (payload.documents || [])
+    .slice(0, 10)
+    .map(mapAddressDocument)
+    .filter(
+      (location) =>
+        location.address &&
+        Number.isFinite(location.latitude) &&
+        Number.isFinite(location.longitude),
+    );
 };
 
 exports.reverseGeocode = async ({ latitude, longitude }) => {

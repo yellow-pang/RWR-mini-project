@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFriendlyErrorMessage } from "../api/client";
-import { reverseGeocodeLocation } from "../api/locations";
+import { reverseGeocodeLocation, searchAddresses } from "../api/locations";
 import { createAddressRoundTripRoute } from "../api/routes";
 import {
   DISTANCE_OPTIONS,
@@ -33,6 +33,10 @@ function HomePage() {
     setRecommendationMeta,
   } = useCourse();
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [addressQuery, setAddressQuery] = useState(routeLocation.address);
+  const [addressResults, setAddressResults] = useState([]);
+  const [addressSearchMessage, setAddressSearchMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [noticeMessage, setNoticeMessage] = useState("");
 
@@ -41,8 +45,7 @@ function HomePage() {
     conditions.time !== null &&
     conditions.type !== null;
   const hasLocation =
-    routeLocation.address.trim().length > 0 ||
-    (routeLocation.latitude !== null && routeLocation.longitude !== null);
+    routeLocation.latitude !== null && routeLocation.longitude !== null;
   const canRecommend = allSelected && hasLocation;
 
   function clearMessages() {
@@ -55,14 +58,17 @@ function HomePage() {
     setConditions((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleAddressChange(event) {
+  function handleAddressQueryChange(event) {
     clearMessages();
+    setAddressSearchMessage("");
+    setAddressResults([]);
+    setAddressQuery(event.target.value);
     setRecommendationMeta(null);
     setRouteLocation({
-      address: event.target.value,
+      address: "",
       latitude: null,
       longitude: null,
-      source: "address-input",
+      source: null,
     });
   }
 
@@ -74,6 +80,61 @@ function HomePage() {
       latitude: null,
       longitude: null,
       source: null,
+    });
+    setAddressQuery("");
+    setAddressResults([]);
+    setAddressSearchMessage("");
+    setRecommendationMeta(null);
+  }
+
+  async function handleSearchAddress() {
+    const query = addressQuery.trim();
+    if (query.length < 2 || isSearchingAddress) return;
+
+    try {
+      setIsSearchingAddress(true);
+      clearMessages();
+      setAddressSearchMessage("");
+      setAddressResults([]);
+
+      const response = await searchAddresses({ query });
+      const results = response.data || [];
+      setAddressResults(results);
+
+      if (results.length === 0) {
+        setAddressSearchMessage(
+          "검색 결과가 없습니다. 도로명이나 건물명을 줄여서 입력해 주세요.",
+        );
+      }
+    } catch (err) {
+      setAddressSearchMessage(
+        getFriendlyErrorMessage(
+          err,
+          "주소 검색에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        ),
+      );
+    } finally {
+      setIsSearchingAddress(false);
+    }
+  }
+
+  function handleAddressQueryKeyDown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      handleSearchAddress();
+    }
+  }
+
+  function handleSelectAddress(result) {
+    clearMessages();
+    setAddressSearchMessage("");
+    setAddressResults([]);
+    setAddressQuery(result.roadAddress || result.address);
+    setRouteLocation({
+      address: result.roadAddress || result.address,
+      latitude: result.latitude,
+      longitude: result.longitude,
+      source: result.source,
     });
     setRecommendationMeta(null);
   }
@@ -89,6 +150,9 @@ function HomePage() {
       try {
         const response = await reverseGeocodeLocation(position);
         setRouteLocation(response.data);
+        setAddressQuery(response.data.address);
+        setAddressResults([]);
+        setAddressSearchMessage("");
         setNoticeMessage(GPS_ADDRESS_NOTICE);
       } catch {
         setRouteLocation({
@@ -97,6 +161,9 @@ function HomePage() {
           longitude: position.longitude,
           source: "gps",
         });
+        setAddressQuery("현재 위치 기준");
+        setAddressResults([]);
+        setAddressSearchMessage("");
         setNoticeMessage(GPS_ADDRESS_FALLBACK_NOTICE);
       }
     } catch {
@@ -168,28 +235,83 @@ function HomePage() {
           <Icon name="pin" size={28} className="icon-green" />
           출발 주소
         </h2>
-        <div className="address-input-row">
+        <div className="address-search-grid">
           <input
-            className="address-input"
+            className="address-input address-search-input"
             type="text"
-            value={routeLocation.address}
-            onChange={handleAddressChange}
-            placeholder="예: 서울 성동구 왕십리로 63"
-            aria-label="출발 주소"
+            value={addressQuery}
+            onChange={handleAddressQueryChange}
+            onKeyDown={handleAddressQueryKeyDown}
+            placeholder="도로명, 지번, 건물명 검색"
+            aria-label="주소 검색어"
           />
           <button
-            className="btn-location"
+            className="btn-address-search"
             type="button"
-            onClick={handleUseCurrentLocation}
-            disabled={isLoading}
+            onClick={handleSearchAddress}
+            disabled={addressQuery.trim().length < 2 || isSearchingAddress}
           >
-            현재 위치
+            {isSearchingAddress ? "검색 중..." : "검색"}
           </button>
+          <div className="selected-address-panel">
+            <span className="selected-address-label">선택된 주소</span>
+            <span className="selected-address-value">
+              {hasLocation
+                ? routeLocation.address
+                : "검색 결과에서 출발 주소를 선택해 주세요."}
+            </span>
+          </div>
         </div>
-        {routeLocation.latitude !== null &&
-          routeLocation.longitude !== null && (
-            <p className="address-helper">{GPS_LOCATION_NOTICE}</p>
+        {addressResults.length > 0 && (
+          <div className="address-result-list" aria-label="주소 검색 결과">
+            {addressResults.map((result) => (
+              <button
+                className="address-result-item"
+                type="button"
+                key={`${result.id}-${result.latitude}-${result.longitude}`}
+                onClick={() => handleSelectAddress(result)}
+              >
+                <span className="address-result-main">
+                  {result.roadAddress || result.address}
+                </span>
+                {result.jibunAddress && (
+                  <span className="address-result-sub">
+                    지번 {result.jibunAddress}
+                  </span>
+                )}
+                {(result.buildingName || result.region) && (
+                  <span className="address-result-meta">
+                    {[result.buildingName, result.region]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+        {addressSearchMessage && (
+          <p className="address-search-message">{addressSearchMessage}</p>
+        )}
+        <button
+          className="btn-location"
+          type="button"
+          onClick={handleUseCurrentLocation}
+          disabled={isLoading}
+        >
+          현재 위치 사용
+        </button>
+        <div className="address-helper-row">
+          {!hasLocation && (
+            <p className="address-helper">
+              검색어 입력 후 후보 주소를 선택해야 코스를 생성할 수 있습니다.
+            </p>
           )}
+          {routeLocation.latitude !== null &&
+            routeLocation.longitude !== null && (
+              <p className="address-helper">{GPS_LOCATION_NOTICE}</p>
+            )}
+        </div>
       </section>
 
       <section className="condition-section">
