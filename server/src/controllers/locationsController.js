@@ -27,6 +27,23 @@ exports.geocode = async (req, res, next) => {
   }
 };
 
+exports.search = async (req, res, next) => {
+  if (sendValidationError(req, res)) return;
+
+  try {
+    const locations = await geocodingService.searchAddresses(req.body.query);
+    res.json({ success: true, data: locations });
+  } catch (err) {
+    if (err.status) {
+      return res.status(err.status).json({
+        success: false,
+        message: err.message || "주소 검색에 실패했습니다.",
+      });
+    }
+    next(err);
+  }
+};
+
 exports.reverseGeocode = async (req, res, next) => {
   if (sendValidationError(req, res)) return;
 

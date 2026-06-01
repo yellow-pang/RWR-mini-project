@@ -34,6 +34,12 @@ GPS는 주소 입력 보조 수단으로 사용한다. 사용자가 `현재 위�
 
 fallback을 위해 `courses` 테이블의 `start_lat`, `start_lng` 좌표를 사용한다. 주소 기준 ORS 경로 생성이 실패하면 서버는 입력 좌표와 저장 코스 시작 좌표 간 Haversine 거리를 계산하고, 가까운 후보군 중 하나를 랜덤 선택한다. 선택된 코스 좌표로 ORS 경로 생성을 한 번 더 시도하며, 그것도 실패하면 저장 코스 자체를 추천 결과로 반환한다.
 
+### 2026.06.01 주소 검색 결과 선택 데이터 보정 기록
+
+Step 22에서는 홈 화면이 단건 주소 변환 API가 아니라 후보 목록 검색 API를 먼저 사용한다. 서버는 카카오 Local REST API의 주소 검색 결과 목록을 클라이언트 선택용 데이터로 변환해 반환한다.
+
+클라이언트는 검색어와 검색 결과 목록을 홈 화면 임시 상태로 관리하고, 사용자가 후보를 선택했을 때만 선택 주소와 좌표를 `routeLocation`에 저장한다. `POST /routes/address-round-trip` 요청은 이 선택된 주소/좌표를 기준으로 전송된다.
+
 ### DB 테이블 관계 (ERD)
 
 ```mermaid
@@ -292,6 +298,35 @@ GET /api/courses/route-001
 ---
 
 ### 위치/경로 생성 API
+
+#### `POST /locations/search` — 주소 검색 후보 목록 조회
+
+카카오 Local REST API 주소 검색 결과를 서버 프록시로 호출한다. 검색 결과가 없더라도 오류가 아니라 빈 배열을 반환한다.
+
+```json
+// Request Body
+{ "query": "사당로 14다길 2-2" }
+```
+
+```json
+// Response
+{
+  "success": true,
+  "data": [
+    {
+      "id": "kakao-address-0",
+      "address": "서울특별시 동작구 사당로14다길 2-2",
+      "roadAddress": "서울특별시 동작구 사당로14다길 2-2",
+      "jibunAddress": "서울특별시 동작구 사당동 ...",
+      "buildingName": "",
+      "region": "서울 동작구",
+      "latitude": 37.0,
+      "longitude": 126.0,
+      "source": "kakao-address"
+    }
+  ]
+}
+```
 
 #### `POST /locations/geocode` — 주소를 좌표로 변환
 

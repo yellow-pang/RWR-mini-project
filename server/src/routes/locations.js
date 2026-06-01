@@ -5,6 +5,17 @@ const locationsController = require("../controllers/locationsController");
 const router = Router();
 
 router.post(
+  "/search",
+  [
+    body("query")
+      .trim()
+      .isLength({ min: 2, max: 200 })
+      .withMessage("검색어는 2자 이상 200자 이하로 입력해 주세요."),
+  ],
+  locationsController.search,
+);
+
+router.post(
   "/geocode",
   [
     body("address")
