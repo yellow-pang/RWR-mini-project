@@ -360,6 +360,13 @@ a {
   min-width: 0;
 }
 
+.address-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 10px;
+  align-items: stretch;
+}
+
 .address-input {
   width: 100%;
   min-height: 54px;
@@ -406,12 +413,61 @@ a {
   opacity: 0.55;
 }
 
+.btn-postcode,
+.btn-postcode-close {
+  min-height: 54px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 800;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    opacity 0.15s;
+}
+
+.btn-postcode {
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.btn-postcode:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.btn-postcode:disabled {
+  opacity: 0.55;
+}
+
+.btn-postcode-close {
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-main);
+}
+
+.btn-postcode-close:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+}
+
+.postcode-layer {
+  width: 100%;
+  height: min(520px, 68vh);
+  min-height: 360px;
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1.5px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
 .selected-address-panel {
   display: flex;
   grid-column: 1 / -1;
   flex-direction: column;
   justify-content: center;
   min-height: 70px;
+  margin-top: 10px;
   padding: 12px 14px;
   border: 1.5px solid var(--color-border);
   border-radius: 12px;
@@ -704,5 +760,14 @@ a {
 
   .address-search-grid {
     grid-template-columns: 1fr;
+  }
+
+  .address-action-row {
+    grid-template-columns: 1fr;
+  }
+
+  .postcode-layer {
+    height: min(480px, 70vh);
+    min-height: 330px;
   }
 }
