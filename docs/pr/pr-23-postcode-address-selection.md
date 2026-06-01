@@ -27,26 +27,29 @@
 
 Step 22의 카카오 Local API 주소 검색 결과 목록 UI를 Kakao 우편번호 서비스 기반 주소 선택 UI로 대체했다.
 
-사용자는 홈 화면의 `주소 찾기` 버튼으로 페이지 안에 우편번호 검색 레이어를 열고, 도로명/지번/건물명 검색 결과에서 정확한 주소를 선택한다. 주소 선택 직후 클라이언트는 기존 서버 `POST /api/locations/geocode`로 좌표 변환을 요청하고, 좌표 변환에 성공한 경우에만 `routeLocation`에 주소와 좌표를 저장한다.
+사용자는 홈 화면의 `주소 찾기` 버튼으로 우편번호 검색 레이어를 열고, 도로명/지번/건물명 검색 결과에서 정확한 주소를 선택한다. 주소 선택 직후 클라이언트는 기존 서버 `POST /api/locations/geocode`로 좌표 변환을 요청하고, 좌표 변환에 성공한 경우에만 `routeLocation`에 주소와 좌표를 저장한다.
 
 GPS `현재 위치 사용` 버튼은 유지하며, 현재 위치 좌표를 얻은 경우에도 기존처럼 코스 생성 기준점으로 사용할 수 있다.
+
+주소 선택 UX 피드백을 반영해 `주소 찾기`와 `현재 위치` 버튼은 같은 행에 배치했다. 우편번호 iframe은 문서 흐름을 밀어내지 않는 카드 내부 overlay로 표시해, 주소 검색을 열어도 선택 주소 영역과 아래 조건 섹션이 아래로 밀리지 않도록 했다.
 
 ---
 
 ## 변경 파일 목록
 
-| 구분 | 파일                                               | 변경 내용                                                          |
-| ---- | -------------------------------------------------- | ------------------------------------------------------------------ |
-| 수정 | `client/src/pages/HomePage.jsx`                    | 우편번호 서비스 레이어 열기, 주소 선택, 즉시 좌표 변환 흐름 구현   |
-| 수정 | `client/src/api/locations.js`                      | `POST /api/locations/geocode` 호출 함수 추가                       |
-| 신규 | `client/src/utils/postcode.js`                     | 우편번호 서비스 스크립트 로딩 및 선택 주소 추출 유틸 추가          |
-| 수정 | `client/src/index.css`                             | 주소 찾기 버튼, 우편번호 iframe 레이어, 선택 주소 영역 스타일 추가 |
-| 수정 | `docs/01-overview.md`                              | 우편번호 서비스 기반 주소 선택 보정 기록 추가                      |
-| 수정 | `docs/03-requirements.md`                          | 주소 선택 직후 좌표 변환 요구사항 기록 추가                        |
-| 수정 | `docs/06-data-spec.md`                             | 우편번호 서비스와 geocode API 역할 분리 명세 추가                  |
-| 신규 | `docs/plans/plan-23-postcode-address-selection.md` | Step 23 작업 계획서 작성                                           |
-| 신규 | `docs/pr/pr-23-postcode-address-selection.md`      | PR 문서 작성                                                       |
-| 신규 | `docs/steps/step-23-postcode-address-selection.md` | Step 완료 문서 작성                                                |
+| 구분 | 파일                                               | 변경 내용                                                        |
+| ---- | -------------------------------------------------- | ---------------------------------------------------------------- |
+| 수정 | `client/src/pages/HomePage.jsx`                    | 우편번호 서비스 레이어 열기, 주소 선택, 즉시 좌표 변환 흐름 구현 |
+| 수정 | `client/src/api/locations.js`                      | `POST /api/locations/geocode` 호출 함수 추가                     |
+| 수정 | `client/src/components/Icon.jsx`                   | 주소 찾기 버튼용 검색 아이콘 추가                                |
+| 신규 | `client/src/utils/postcode.js`                     | 우편번호 서비스 스크립트 로딩 및 선택 주소 추출 유틸 추가        |
+| 수정 | `client/src/index.css`                             | 가로 버튼 배치, 우편번호 overlay, 선택 주소 영역 스타일 추가     |
+| 수정 | `docs/01-overview.md`                              | 우편번호 서비스 기반 주소 선택 보정 기록 추가                    |
+| 수정 | `docs/03-requirements.md`                          | 주소 선택 직후 좌표 변환 요구사항 기록 추가                      |
+| 수정 | `docs/06-data-spec.md`                             | 우편번호 서비스와 geocode API 역할 분리 명세 추가                |
+| 신규 | `docs/plans/plan-23-postcode-address-selection.md` | Step 23 작업 계획서 작성                                         |
+| 신규 | `docs/pr/pr-23-postcode-address-selection.md`      | PR 문서 작성                                                     |
+| 신규 | `docs/steps/step-23-postcode-address-selection.md` | Step 완료 문서 작성                                              |
 
 ---
 
@@ -62,13 +65,14 @@ GPS `현재 위치 사용` 버튼은 유지하며, 현재 위치 좌표를 얻�
 
 - 사용자는 홈 화면에서 `주소 찾기` 버튼을 누른다.
 - 클라이언트는 Kakao 우편번호 서비스 스크립트를 필요한 시점에 로드한다.
-- 스크립트 로드 후 주소 섹션 안에 iframe 레이어를 표시한다.
+- 스크립트 로드 후 주소 카드 안에 iframe overlay를 표시한다.
 - 사용자는 우편번호 서비스에서 도로명, 지번, 건물명으로 주소를 검색하고 후보를 선택한다.
 - 선택 주소는 `POST /api/locations/geocode`로 전달되어 좌표 변환된다.
 - 좌표 변환에 성공하면 선택 주소와 좌표를 `routeLocation`에 저장한다.
 - 좌표 변환에 실패하면 `routeLocation`을 초기화하고 코스 생성 기준점으로 확정하지 않는다.
 - `코스 생성` 버튼은 거리, 시간, 운동 유형, 선택 주소/좌표가 모두 있을 때 활성화된다.
 - `현재 위치 사용` 버튼은 유지되며 GPS 좌표를 얻으면 선택 주소 영역을 갱신한다.
+- 우편번호 overlay는 absolute 레이어로 표시되어 아래 조건 섹션을 밀어내지 않는다.
 
 ---
 

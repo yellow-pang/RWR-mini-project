@@ -23,6 +23,10 @@ Step 22의 홈 화면 주소 영역에는 검색어 입력칸, 검색 버튼, �
 
 이번 변경 후에는 사용자가 `주소 찾기` 버튼을 누르면 주소 섹션 안에 Kakao 우편번호 서비스 iframe 레이어가 열린다. 주소 검색과 후보 선택은 우편번호 서비스 UI에서 처리한다.
 
+추가 UX 피드백을 반영해 `주소 찾기`와 `현재 위치`는 같은 행에 배치했다. 두 버튼은 출발지 설정을 위한 수평적 대안으로 보이게 했고, 모바일에서도 텍스트가 과도하게 눌리지 않도록 아이콘과 짧은 문구를 함께 사용했다.
+
+또한 우편번호 iframe은 일반 문서 흐름에 삽입하지 않고 주소 카드 내부의 absolute overlay로 띄운다. 주소 찾기 레이어를 열어도 선택 주소, 안내 문구, 아래 조건 섹션이 아래로 밀리지 않아 layout shift를 줄인다.
+
 ### 2.2 주소 선택 직후 좌표 변환
 
 우편번호 서비스는 주소 선택까지만 담당한다. 선택된 주소는 클라이언트가 `POST /api/locations/geocode`로 보내 좌표를 즉시 확인한다.
@@ -108,9 +112,9 @@ HomePage는 선택 주소의 좌표 변환을 이 함수로 요청한다. 컴포
 
 추가된 스타일:
 
-- 주소 찾기 버튼 영역
+- 주소 찾기/현재 위치 가로 버튼 영역
 - 우편번호 레이어 닫기 버튼
-- iframe 레이어 박스
+- 카드 내부 absolute iframe overlay
 - 모바일 폭에서 우편번호 레이어 높이 조정
 
 ---
@@ -161,13 +165,14 @@ Step 22에서 만든 `POST /api/locations/search`는 호환용으로 유지하�
 
 ## 6. 변경 파일 요약
 
-| 구분            | 파일                                                                                                                                                                        |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 클라이언트 UI   | `client/src/pages/HomePage.jsx`                                                                                                                                             |
-| 클라이언트 API  | `client/src/api/locations.js`                                                                                                                                               |
-| 클라이언트 유틸 | `client/src/utils/postcode.js`                                                                                                                                              |
-| 클라이언트 CSS  | `client/src/index.css`                                                                                                                                                      |
-| 문서            | `docs/01-overview.md`, `docs/03-requirements.md`, `docs/06-data-spec.md`, `docs/pr/pr-23-postcode-address-selection.md`, `docs/steps/step-23-postcode-address-selection.md` |
+| 구분              | 파일                                                                                                                                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 클라이언트 UI     | `client/src/pages/HomePage.jsx`                                                                                                                                             |
+| 클라이언트 API    | `client/src/api/locations.js`                                                                                                                                               |
+| 클라이언트 아이콘 | `client/src/components/Icon.jsx`                                                                                                                                            |
+| 클라이언트 유틸   | `client/src/utils/postcode.js`                                                                                                                                              |
+| 클라이언트 CSS    | `client/src/index.css`                                                                                                                                                      |
+| 문서              | `docs/01-overview.md`, `docs/03-requirements.md`, `docs/06-data-spec.md`, `docs/pr/pr-23-postcode-address-selection.md`, `docs/steps/step-23-postcode-address-selection.md` |
 
 ---
 

@@ -253,7 +253,7 @@ function HomePage() {
 
       <h1 className="home-title">오늘은 어디로 걸어볼까요?</h1>
 
-      <section className="condition-section">
+      <section className="condition-section address-section">
         <h2 className="condition-title">
           <Icon name="pin" size={28} className="icon-green" />
           출발 주소
@@ -265,25 +265,19 @@ function HomePage() {
             onClick={handleOpenPostcode}
             disabled={isPostcodeLoading || isGeocodingAddress}
           >
+            <Icon name="search" size={21} />
             {isPostcodeLoading ? "불러오는 중..." : "주소 찾기"}
           </button>
-          {isPostcodeOpen && (
-            <button
-              className="btn-postcode-close"
-              type="button"
-              onClick={handleClosePostcode}
-            >
-              닫기
-            </button>
-          )}
+          <button
+            className="btn-current-location"
+            type="button"
+            onClick={handleUseCurrentLocation}
+            disabled={isLoading}
+          >
+            <Icon name="pin" size={21} />
+            현재 위치
+          </button>
         </div>
-        {isPostcodeOpen && (
-          <div
-            className="postcode-layer"
-            ref={postcodeLayerRef}
-            aria-label="우편번호 주소 검색"
-          />
-        )}
         <div className="selected-address-panel">
           <span className="selected-address-label">선택된 주소</span>
           <span className="selected-address-value">
@@ -301,14 +295,6 @@ function HomePage() {
             {postcodeMessage}
           </p>
         )}
-        <button
-          className="btn-location"
-          type="button"
-          onClick={handleUseCurrentLocation}
-          disabled={isLoading}
-        >
-          현재 위치 사용
-        </button>
         <div className="address-helper-row">
           {!hasLocation && (
             <p className="address-helper">
@@ -320,6 +306,25 @@ function HomePage() {
               <p className="address-helper">{GPS_LOCATION_NOTICE}</p>
             )}
         </div>
+        {isPostcodeOpen && (
+          <div className="postcode-overlay" role="dialog" aria-modal="true">
+            <div className="postcode-overlay-header">
+              <span className="postcode-overlay-title">주소 찾기</span>
+              <button
+                className="btn-postcode-close"
+                type="button"
+                onClick={handleClosePostcode}
+              >
+                닫기
+              </button>
+            </div>
+            <div
+              className="postcode-layer"
+              ref={postcodeLayerRef}
+              aria-label="우편번호 주소 검색"
+            />
+          </div>
+        )}
       </section>
 
       <section className="condition-section">
