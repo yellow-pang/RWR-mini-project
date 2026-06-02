@@ -22,6 +22,12 @@ function MapPreview({ compact = false, course }) {
           className="map-route"
           d="M82 136c20-55 57-89 112-94 47-4 71 18 110 25 35 6 64 20 62 48-2 31-42 45-57 75-20 39-79 30-113 14-28-14-59-13-84-27-18-11-37-22-30-41Z"
         />
+        <g className="map-route-arrows">
+          <path d="m151 66 13 5-12 7" />
+          <path d="m291 73 13 5-12 7" />
+          <path d="m322 164-13 6 7-13" />
+          <path d="m180 199-13-4 11-8" />
+        </g>
         <circle cx="82" cy="136" r="13" className="map-start" />
       </svg>
       <div className="map-label">

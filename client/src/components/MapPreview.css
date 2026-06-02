@@ -63,6 +63,20 @@
   stroke-width: 7;
 }
 
+.map-route-arrows {
+  fill: none;
+  stroke: var(--color-surface);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 8;
+}
+
+.map-route-arrows path {
+  paint-order: stroke;
+  stroke: var(--color-primary);
+  stroke-width: 4;
+}
+
 .route-shadow {
   stroke: var(--color-map-road);
   stroke-width: 14;

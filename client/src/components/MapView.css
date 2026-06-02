@@ -11,6 +11,40 @@
   border-radius: 18px;
 }
 
+.route-direction-arrow {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+}
+
+.route-direction-arrow::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 15px solid var(--color-surface);
+  filter: drop-shadow(0 1px 3px rgba(25, 140, 77, 0.5));
+  content: "";
+  transform: translate(-45%, -50%);
+}
+
+.route-direction-arrow::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 9px solid var(--color-primary);
+  content: "";
+  transform: translate(-48%, -50%);
+}
+
 /* 카카오맵 InfoWindow 내부 콘텐츠 (전역 스타일 필요) */
 .map-infowindow {
   padding: 5px 10px;
