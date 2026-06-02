@@ -57,10 +57,71 @@
 
 .map-route {
   fill: none;
-  stroke: var(--color-map-route);
+  stroke: #6dbb87;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 7;
+}
+
+.map-route-progress {
+  fill: none;
+  stroke: var(--color-map-route);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 10;
+}
+
+.map-route-markers circle {
+  fill: var(--color-surface);
+  stroke: var(--color-primary);
+  stroke-width: 3;
+}
+
+.map-route-markers path {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.map-sequence-markers circle {
+  fill: #0f7f45;
+  stroke: var(--color-surface);
+  stroke-width: 3;
+}
+
+.map-sequence-markers text {
+  fill: var(--color-surface);
+  font-size: 12px;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.map-endpoint circle {
+  fill: #147a44;
+  stroke: var(--color-surface);
+  stroke-width: 4;
+}
+
+.map-endpoint.finish circle {
+  fill: #c0473f;
+}
+
+.map-endpoint path {
+  fill: var(--color-surface);
+  stroke: var(--color-surface);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.map-endpoint.start path {
+  stroke: none;
+}
+
+.map-endpoint.finish path {
+  fill: none;
 }
 
 .route-shadow {
