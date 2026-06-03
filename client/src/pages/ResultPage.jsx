@@ -38,6 +38,7 @@ function ResultPage() {
     routeLocation,
     destinationLocation,
     detourLevel,
+    routeTheme,
     recommendationMeta,
     setRecommendationMeta,
   } = useCourse();
@@ -70,6 +71,7 @@ function ResultPage() {
       targetMinutes: isDistanceTarget ? null : conditions.time,
       estimatedMinutes,
       detourLevel,
+      routeTheme,
       seed,
     };
   }

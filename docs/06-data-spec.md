@@ -120,6 +120,46 @@ Step 28에서는 출발-도착 생성형 코스 요청에 `detourLevel` 필드�
 }
 ```
 
+### 2026.06.03 POI 기반 경유지 후보 데이터 보정 기록
+
+Step 29에서는 생성형 코스 요청에 `routeTheme` 필드를 추가한다. 이 값은 PostgreSQL에 저장하지 않고 요청 단위로만 사용한다.
+
+| 필드 | 타입 | 설명 |
+| ---- | ---- | ---- |
+| `routeTheme` | string | 코스 분위기. `any`, `park`, `trail`, `cafe`, `convenience` 중 하나 |
+
+서버는 기존 `KAKAO_REST_API_KEY`로 Kakao Local API 키워드 검색을 호출해 POI 후보를 만든다. POI 후보는 아래 내부 구조로 변환해 ORS 경유지 후보로만 사용한다.
+
+```json
+{
+  "id": "kakao-poi-...",
+  "name": "서울숲",
+  "category": "공원",
+  "theme": "park",
+  "themeLabel": "공원 위주",
+  "latitude": 37.5446,
+  "longitude": 127.0374,
+  "source": "kakao-local"
+}
+```
+
+생성형 코스 응답에는 `poiSummary`를 포함할 수 있다.
+
+```json
+{
+  "poiSummary": {
+    "routeTheme": "park",
+    "themeLabel": "공원 위주",
+    "usedPoi": true,
+    "poiFallback": false,
+    "poiNames": ["서울숲"],
+    "poiCategories": ["공원"]
+  }
+}
+```
+
+POI 후보를 사용하지 못한 경우에는 `poiFallback: true`와 fallback 이유를 포함한다. 이 경우에도 기존 랜덤 경유지 또는 ORS round trip 방식으로 코스 생성을 계속 시도한다.
+
 ### DB 테이블 관계 (ERD)
 
 ```mermaid

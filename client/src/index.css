@@ -727,8 +727,16 @@ a {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.route-theme-group {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .detour-level-option.compact {
   min-height: 86px;
+}
+
+.route-theme-option.compact {
+  min-height: 88px;
 }
 
 .recommendation-mode:hover,
