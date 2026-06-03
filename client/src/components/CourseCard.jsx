@@ -118,9 +118,7 @@ function CourseCard({
           </span>
           <p className="course-reason-text">
             {poiSummary.usedPoi && poiSummary.poiNames?.length
-              ? `${poiPreferenceLabel} 분위기에 맞춰 ${poiSummary.poiNames
-                  .slice(0, 2)
-                  .join(", ")} 근처를 지나는 후보를 참고했습니다.`
+              ? `${poiPreferenceLabel} 분위기에 어울리는 주변 장소 후보를 참고해 코스를 만들었습니다.`
               : poiSummary.fallbackReason ||
                 "주변 장소 후보가 부족해 기존 랜덤 경유지 방식으로 추천했습니다."}
           </p>

@@ -271,7 +271,7 @@ function buildGeneratedCourse({
         : `${originLabel}을 출발점으로 ORS가 실제 도로망을 따라 생성한 순환 운동 코스입니다.`,
     reason:
       poiSummary?.usedPoi
-        ? `${poiPreferenceLabel} 분위기에 맞춰 주변 장소를 목적지로 고정하지 않고 경유 후보로 참고했습니다.`
+        ? `${poiPreferenceLabel} 분위기에 어울리는 주변 장소 후보를 참고해 코스를 만들었습니다.`
         : routeMode === "pointToPoint"
         ? "출발지와 목적지 사이에 랜덤 경유지를 더해 바로 가는 길보다 여유 있게 걸을 수 있도록 추천합니다."
         : "선택한 거리와 운동 유형을 바탕으로 매일 다른 방향의 코스를 추천합니다.",
@@ -287,6 +287,21 @@ function createSeededRandom(seed) {
     state = (state * 1664525 + 1013904223) % 4294967296;
     return state / 4294967296;
   };
+}
+
+function shufflePoiCandidates(poiCandidates, seed, salt = 0) {
+  const random = createSeededRandom((Number(seed) || Date.now()) + salt);
+  const shuffledPois = [...poiCandidates];
+
+  for (let index = shuffledPois.length - 1; index > 0; index -= 1) {
+    const nextIndex = Math.floor(random() * (index + 1));
+    [shuffledPois[index], shuffledPois[nextIndex]] = [
+      shuffledPois[nextIndex],
+      shuffledPois[index],
+    ];
+  }
+
+  return shuffledPois;
 }
 
 function getDistanceInMeters(pointA, pointB) {
@@ -471,13 +486,14 @@ exports.createRoundTrip = async ({
       points: [{ latitude: Number(latitude), longitude: Number(longitude) }],
       targetDistanceKm: resolvedTargetDistanceKm,
     });
+    const shuffledPoiCandidates = shufflePoiCandidates(poiCandidates, seed, 31);
 
     for (
       let attempt = 0;
-      attempt < Math.min(CANDIDATE_LIMIT, poiCandidates.length);
+      attempt < Math.min(CANDIDATE_LIMIT, shuffledPoiCandidates.length);
       attempt += 1
     ) {
-      const poi = poiCandidates[attempt];
+      const poi = shuffledPoiCandidates[attempt];
 
       try {
         const payload = await requestOrsRoute({
@@ -681,6 +697,7 @@ exports.createPointToPoint = async ({
       points: poiService.getPointToPointSearchCenters({ start, end }),
       targetDistanceKm: resolvedTargetDistanceKm,
     });
+    poiCandidates = shufflePoiCandidates(poiCandidates, seed, 53);
   } catch {
     poiFallbackReason =
       "주변 장소 후보를 불러오지 못해 기존 랜덤 경유지로 코스를 생성했습니다.";

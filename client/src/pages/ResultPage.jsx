@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFriendlyErrorMessage } from "../api/client";
 import {
@@ -61,6 +61,10 @@ function ResultPage() {
       ? calculateEstimatedMinutes(targetDistanceKm, conditions.type)
       : null;
   const favorite = useFavoriteStatus(isGeneratedRoute ? null : course?.id);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, []);
 
   function buildRouteRequestPayload(seed) {
     return {
