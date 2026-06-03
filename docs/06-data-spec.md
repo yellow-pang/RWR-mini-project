@@ -724,4 +724,26 @@ flowchart TD
 
 ---
 
+## Step 30 보정 기록: POI 선호 요청 데이터
+
+작성일: 2026.06.03
+
+생성형 코스 요청은 기존 `routeTheme`을 유지하면서 `poiPreferences` 배열을 추가로 사용할 수 있다.
+
+```json
+{
+  "routeTheme": "any",
+  "poiPreferences": ["park", "convenience"]
+}
+```
+
+- `routeTheme`은 기존 요청 호환을 위해 유지한다.
+- `poiPreferences`는 선택적 배열이며, 값은 `park`, `cafe`, `convenience` 중 최대 2개까지 허용한다.
+- 서버는 `poiPreferences`가 있으면 이를 우선 사용한다.
+- 구버전 요청처럼 `routeTheme`만 `park`, `cafe`, `convenience`로 들어오면 서버에서 내부 POI 선호값으로 변환한다.
+- 응답의 `poiSummary`에는 `poiPreferences`, `preferenceLabels`, `usedPoi`, `poiFallback`, `fallbackReason`이 포함될 수 있다.
+- POI 후보와 검색 결과는 DB에 저장하지 않고 요청 단위 계산 결과로만 사용한다.
+
+---
+
 _다음 문서: [07. 기술 스택 & 아키텍처](./07-tech-stack.md)_

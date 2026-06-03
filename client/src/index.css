@@ -739,6 +739,42 @@ a {
   min-height: 88px;
 }
 
+.poi-preference-summary {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-success-border);
+  border-radius: 12px;
+  background: var(--color-success-soft);
+}
+
+.poi-preference-summary-label {
+  color: var(--color-primary-dark);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.poi-preference-summary-desc {
+  color: var(--color-text-sub);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.poi-preference-group {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.poi-preference-chip {
+  min-height: 50px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.poi-preference-chip:disabled {
+  opacity: 0.42;
+}
+
 .recommendation-mode:hover,
 .recommendation-mode.selected {
   border-color: var(--color-primary);

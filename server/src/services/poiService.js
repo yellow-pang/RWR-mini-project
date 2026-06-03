@@ -1,6 +1,9 @@
 const {
+  POI_PREFERENCE_LABELS,
+  POI_SEARCH_STRATEGIES,
   ROUTE_THEME_KEYWORDS,
   ROUTE_THEME_LABELS,
+  normalizePoiPreferences,
   normalizeRouteTheme,
 } = require("../constants/poiCategories");
 
@@ -28,8 +31,8 @@ function getSearchRadiusMeters(targetDistanceKm) {
   return 1500;
 }
 
-async function requestKakaoKeywordSearch(params) {
-  const url = new URL(`${KAKAO_LOCAL_BASE_URL}/search/keyword.json`);
+async function requestKakaoLocalSearch(path, params) {
+  const url = new URL(`${KAKAO_LOCAL_BASE_URL}${path}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
       url.searchParams.set(key, value);
@@ -55,7 +58,18 @@ async function requestKakaoKeywordSearch(params) {
   return payload;
 }
 
-function mapPoiDocument(document, { theme, keyword, centerIndex, index }) {
+function requestKakaoKeywordSearch(params) {
+  return requestKakaoLocalSearch("/search/keyword.json", params);
+}
+
+function requestKakaoCategorySearch(params) {
+  return requestKakaoLocalSearch("/search/category.json", params);
+}
+
+function mapPoiDocument(
+  document,
+  { theme, preference, label, category, centerIndex, index, matchSource },
+) {
   const latitude = Number(document.y);
   const longitude = Number(document.x);
 
@@ -66,11 +80,14 @@ function mapPoiDocument(document, { theme, keyword, centerIndex, index }) {
   return {
     id:
       document.id ||
-      `kakao-poi-${theme}-${centerIndex}-${index}-${latitude}-${longitude}`,
-    name: document.place_name || keyword,
-    category: keyword,
+      `kakao-poi-${theme}-${preference || category}-${centerIndex}-${index}-${latitude}-${longitude}`,
+    name: document.place_name || label,
+    category: label,
     theme,
     themeLabel: ROUTE_THEME_LABELS[theme],
+    preference,
+    preferenceLabel: preference ? POI_PREFERENCE_LABELS[preference] : null,
+    matchSource,
     latitude,
     longitude,
     source: "kakao-local",
@@ -105,13 +122,81 @@ exports.getRouteThemeLabel = function getRouteThemeLabel(routeTheme) {
 
 exports.searchRouteThemePois = async function searchRouteThemePois({
   routeTheme,
+  poiPreferences,
   points,
   targetDistanceKm,
 }) {
   const theme = normalizeRouteTheme(routeTheme);
-  const keywords = ROUTE_THEME_KEYWORDS[theme] || ROUTE_THEME_KEYWORDS.any;
+  const preferences = normalizePoiPreferences(poiPreferences, theme);
+  const legacyKeywords = ROUTE_THEME_KEYWORDS[theme] || ROUTE_THEME_KEYWORDS.any;
   const radius = getSearchRadiusMeters(targetDistanceKm);
   const searches = [];
+
+  async function searchPreferenceAtPoint({ preference, point, centerIndex }) {
+    const strategy = POI_SEARCH_STRATEGIES[preference];
+    const categoryResults = await Promise.allSettled(
+      strategy.categoryCodes.map((categoryCode) =>
+        requestKakaoCategorySearch({
+          category_group_code: categoryCode,
+          x: point.longitude,
+          y: point.latitude,
+          radius,
+          size: DEFAULT_RESULT_SIZE,
+          sort: "distance",
+        }).then((payload) =>
+          (payload.documents || []).map((document, index) =>
+            mapPoiDocument(document, {
+              theme,
+              preference,
+              label: POI_PREFERENCE_LABELS[preference],
+              category: categoryCode,
+              centerIndex,
+              index,
+              matchSource: "category",
+            }),
+          ),
+        ),
+      ),
+    );
+    const categoryDocuments = categoryResults
+      .filter((result) => result.status === "fulfilled")
+      .flatMap((result) => result.value);
+
+    const validCategoryDocuments = categoryDocuments.filter(Boolean);
+    if (validCategoryDocuments.length > 0) {
+      return validCategoryDocuments;
+    }
+
+    const keywordResults = await Promise.allSettled(
+      strategy.keywords.map((keyword) =>
+        requestKakaoKeywordSearch({
+          query: keyword,
+          x: point.longitude,
+          y: point.latitude,
+          radius,
+          size: DEFAULT_RESULT_SIZE,
+          sort: "distance",
+        }).then((payload) =>
+          (payload.documents || []).map((document, index) =>
+            mapPoiDocument(document, {
+              theme,
+              preference,
+              label: keyword,
+              category: keyword,
+              centerIndex,
+              index,
+              matchSource: "keyword",
+            }),
+          ),
+        ),
+      ),
+    );
+
+    return keywordResults
+      .filter((result) => result.status === "fulfilled")
+      .flatMap((result) => result.value)
+      .filter(Boolean);
+  }
 
   points.forEach((point, centerIndex) => {
     if (
@@ -121,7 +206,14 @@ exports.searchRouteThemePois = async function searchRouteThemePois({
       return;
     }
 
-    keywords.forEach((keyword) => {
+    if (preferences.length > 0) {
+      preferences.forEach((preference) => {
+        searches.push(searchPreferenceAtPoint({ preference, point, centerIndex }));
+      });
+      return;
+    }
+
+    legacyKeywords.forEach((keyword) => {
       searches.push(
         requestKakaoKeywordSearch({
           query: keyword,
@@ -133,7 +225,14 @@ exports.searchRouteThemePois = async function searchRouteThemePois({
         }).then((payload) =>
           (payload.documents || [])
             .map((document, index) =>
-              mapPoiDocument(document, { theme, keyword, centerIndex, index }),
+              mapPoiDocument(document, {
+                theme,
+                label: keyword,
+                category: keyword,
+                centerIndex,
+                index,
+                matchSource: "keyword",
+              }),
             )
             .filter(Boolean),
         ),

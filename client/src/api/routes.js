@@ -33,6 +33,7 @@ export async function createAddressRoundTripRoute({
   targetMinutes,
   estimatedMinutes,
   routeTheme,
+  poiPreferences,
   seed,
   exclude,
 }) {
@@ -46,6 +47,7 @@ export async function createAddressRoundTripRoute({
     targetMinutes,
     estimatedMinutes,
     routeTheme,
+    poiPreferences,
     seed,
   };
 
@@ -83,6 +85,7 @@ export async function createAddressPointToPointRoute({
   estimatedMinutes,
   detourLevel,
   routeTheme,
+  poiPreferences,
   seed,
 }) {
   const body = {
@@ -97,6 +100,7 @@ export async function createAddressPointToPointRoute({
     estimatedMinutes,
     detourLevel,
     routeTheme,
+    poiPreferences,
     seed,
   };
 

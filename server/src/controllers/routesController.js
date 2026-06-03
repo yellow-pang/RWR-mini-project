@@ -138,6 +138,7 @@ exports.createAddressPointToPoint = async (req, res, next) => {
       estimatedMinutes: req.body.estimatedMinutes,
       detourLevel: req.body.detourLevel,
       routeTheme: req.body.routeTheme,
+      poiPreferences: req.body.poiPreferences,
       seed: req.body.seed,
       startLatitude: startLocation.latitude,
       startLongitude: startLocation.longitude,
