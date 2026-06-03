@@ -57,7 +57,6 @@ function HomePage() {
     setRouteMode,
     conditions,
     setConditions,
-    currentCourse,
     setCurrentCourse,
     routeLocation,
     setRouteLocation,
@@ -103,13 +102,7 @@ function HomePage() {
     destinationLocation.longitude !== null;
   const isPointToPoint = routeMode === ROUTE_MODES.POINT_TO_POINT;
   const distanceOptions = getDistanceOptionsByType(conditions.type);
-  const routeCoordinates = currentCourse?.geometry?.coordinates;
-  const mapLat = routeLocation.latitude ?? currentCourse?.start_lat;
-  const mapLng = routeLocation.longitude ?? currentCourse?.start_lng;
-  const mapTitle =
-    routeLocation.address ||
-    currentCourse?.title ||
-    "출발지를 선택하면 지도에 표시됩니다.";
+  const mapTitle = routeLocation.address || "선택된 출발 위치";
   const canRecommend =
     allSelected && hasLocation && (!isPointToPoint || hasDestination);
 
@@ -419,7 +412,7 @@ function HomePage() {
   }
 
   return (
-    <div className="page home-page home-map-first">
+    <div className="page home-page">
       <header className="home-header">
         <span className="header-icon-static" aria-hidden="true">
           <Icon name="menu" size={28} />
@@ -434,34 +427,6 @@ function HomePage() {
       </header>
 
       <h1 className="home-title">오늘은 어디로 걸어볼까요?</h1>
-
-      <div className="home-map-layout">
-        <section className="home-map-panel" aria-label="코스 지도">
-          <MapView
-            lat={mapLat}
-            lng={mapLng}
-            title={mapTitle}
-            routeCoordinates={routeCoordinates}
-            routeMode={currentCourse?.routeMode || routeMode}
-          />
-          <div className="home-map-status">
-            <span className="home-map-status-label">지도 기준</span>
-            <span className="home-map-status-value">
-              {hasLocation
-                ? routeLocation.address
-                : "출발지를 선택하면 이곳에 기준 위치가 표시됩니다."}
-            </span>
-          </div>
-        </section>
-
-        <div className="home-control-panel" aria-label="코스 조건 설정">
-          <div className="home-bottom-sheet-handle" aria-hidden="true" />
-          <div className="home-control-heading">
-            <span className="home-control-title">오늘의 랜덤 코스</span>
-            <span className="home-control-subtitle">
-              지도를 보면서 조건을 조절해 주세요.
-            </span>
-          </div>
 
       <section className="condition-section">
         <h2 className="condition-title">
@@ -571,6 +536,24 @@ function HomePage() {
           </div>
         )}
       </section>
+
+      {hasLocation && (
+        <section className="condition-section location-preview-section">
+          <h2 className="condition-title">
+            <Icon name="pin" size={28} className="icon-green" />
+            출발 위치 확인
+          </h2>
+          <MapView
+            compact
+            lat={routeLocation.latitude}
+            lng={routeLocation.longitude}
+            title={mapTitle}
+          />
+          <p className="address-search-message">
+            이 위치를 기준으로 코스를 추천합니다.
+          </p>
+        </section>
+      )}
 
       {isPointToPoint && (
         <section className="condition-section address-section">
@@ -854,8 +837,6 @@ function HomePage() {
       <button className="btn-reset" onClick={handleReset}>
         초기화
       </button>
-        </div>
-      </div>
     </div>
   );
 }

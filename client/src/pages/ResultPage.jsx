@@ -7,6 +7,7 @@ import {
 } from "../api/routes";
 import CourseCard from "../components/CourseCard";
 import Icon from "../components/Icon";
+import MapView from "../components/MapView";
 import { ROUTE_MODES } from "../constants/recommendationModes";
 import { TARGET_MODES } from "../constants/courseOptions";
 import { useCourse } from "../hooks/useCourse";
@@ -194,13 +195,22 @@ function ResultPage() {
         <p className="form-notice">{favorite.noticeMessage}</p>
       )}
 
+      <section className="result-map-section" aria-label="추천 코스 지도">
+        <MapView
+          lat={course.start_lat}
+          lng={course.start_lng}
+          routeCoordinates={course.geometry?.coordinates}
+          routeMode={course.routeMode}
+          title={course.title}
+        />
+      </section>
+
       <CourseCard
         course={course}
         isFavorite={favorite.isFavorite}
         onFavoriteToggle={
           isGeneratedRoute ? undefined : favorite.toggleFavorite
         }
-        featured
       />
 
       <button
