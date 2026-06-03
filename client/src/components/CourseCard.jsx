@@ -29,6 +29,7 @@ function CourseCard({
           lat={course.start_lat}
           lng={course.start_lng}
           routeCoordinates={course.geometry?.coordinates}
+          routeMode={course.routeMode}
           title={course.title}
         />
       )}
@@ -47,7 +48,9 @@ function CourseCard({
           <span className="course-badge mood">{getMoodLabel(course.mood)}</span>
         )}
         {isGeneratedRoute && (
-          <span className="course-badge mood">주소 생성</span>
+          <span className="course-badge mood">
+            {course.routeMode === "pointToPoint" ? "출발-도착" : "주소 생성"}
+          </span>
         )}
       </div>
 

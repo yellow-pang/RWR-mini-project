@@ -141,6 +141,7 @@ function DetailPage() {
         lat={course.start_lat}
         lng={course.start_lng}
         routeCoordinates={course.geometry?.coordinates}
+        routeMode={course.routeMode}
         title={course.title}
       />
 

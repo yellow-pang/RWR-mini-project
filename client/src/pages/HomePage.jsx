@@ -2,7 +2,10 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFriendlyErrorMessage } from "../api/client";
 import { geocodeAddress, reverseGeocodeLocation } from "../api/locations";
-import { createAddressRoundTripRoute } from "../api/routes";
+import {
+  createAddressPointToPointRoute,
+  createAddressRoundTripRoute,
+} from "../api/routes";
 import {
   DISTANCE_OPTIONS,
   TIME_OPTIONS,
@@ -14,6 +17,8 @@ import {
   GPS_ADDRESS_NOTICE,
   GPS_LOCATION_NOTICE,
   GPS_PERMISSION_NOTICE,
+  POINT_TO_POINT_DISTANCE_NOTICE,
+  ROUTE_MODES,
 } from "../constants/recommendationModes";
 import { useCourse } from "../hooks/useCourse";
 import Icon from "../components/Icon";
@@ -30,14 +35,19 @@ import {
 function HomePage() {
   const navigate = useNavigate();
   const {
+    routeMode,
+    setRouteMode,
     conditions,
     setConditions,
     setCurrentCourse,
     routeLocation,
     setRouteLocation,
+    destinationLocation,
+    setDestinationLocation,
     setRecommendationMeta,
   } = useCourse();
   const postcodeLayerRef = useRef(null);
+  const [addressTarget, setAddressTarget] = useState("start");
   const [isLoading, setIsLoading] = useState(false);
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false);
   const [isPostcodeLoading, setIsPostcodeLoading] = useState(false);
@@ -52,7 +62,21 @@ function HomePage() {
     conditions.type !== null;
   const hasLocation =
     routeLocation.latitude !== null && routeLocation.longitude !== null;
-  const canRecommend = allSelected && hasLocation;
+  const hasDestination =
+    destinationLocation.latitude !== null &&
+    destinationLocation.longitude !== null;
+  const isPointToPoint = routeMode === ROUTE_MODES.POINT_TO_POINT;
+  const canRecommend =
+    allSelected && hasLocation && (!isPointToPoint || hasDestination);
+
+  function getEmptyLocation() {
+    return {
+      address: "",
+      latitude: null,
+      longitude: null,
+      source: null,
+    };
+  }
 
   function clearMessages() {
     setErrorMessage("");
@@ -64,21 +88,26 @@ function HomePage() {
     setConditions((prev) => ({ ...prev, [key]: value }));
   }
 
+  function handleRouteModeChange(nextRouteMode) {
+    clearMessages();
+    setRouteMode(nextRouteMode);
+    setRecommendationMeta(null);
+    setIsPostcodeOpen(false);
+    setPostcodeMessage("");
+  }
+
   function handleReset() {
     clearMessages();
     setConditions({ distance: null, time: null, type: null });
-    setRouteLocation({
-      address: "",
-      latitude: null,
-      longitude: null,
-      source: null,
-    });
+    setRouteMode(ROUTE_MODES.ROUND_TRIP);
+    setRouteLocation(getEmptyLocation());
+    setDestinationLocation(getEmptyLocation());
     setPostcodeMessage("");
     setIsPostcodeOpen(false);
     setRecommendationMeta(null);
   }
 
-  async function applyPostcodeAddress(address) {
+  async function applyPostcodeAddress(address, target = addressTarget) {
     if (!address) {
       setPostcodeMessage("선택한 주소를 확인하지 못했습니다.");
       return;
@@ -89,27 +118,30 @@ function HomePage() {
       clearMessages();
       setPostcodeMessage("주소 좌표 확인 중...");
       setRecommendationMeta(null);
-      setRouteLocation({
-        address: "",
-        latitude: null,
-        longitude: null,
-        source: null,
-      });
+      if (target === "destination") {
+        setDestinationLocation(getEmptyLocation());
+      } else {
+        setRouteLocation(getEmptyLocation());
+      }
 
       const response = await geocodeAddress({ address });
-      setRouteLocation({
+      const nextLocation = {
         ...response.data,
         address,
         source: "postcode",
-      });
+      };
+      if (target === "destination") {
+        setDestinationLocation(nextLocation);
+      } else {
+        setRouteLocation(nextLocation);
+      }
       setPostcodeMessage("");
     } catch (err) {
-      setRouteLocation({
-        address: "",
-        latitude: null,
-        longitude: null,
-        source: null,
-      });
+      if (target === "destination") {
+        setDestinationLocation(getEmptyLocation());
+      } else {
+        setRouteLocation(getEmptyLocation());
+      }
       setPostcodeMessage(
         getFriendlyErrorMessage(
           err,
@@ -121,7 +153,7 @@ function HomePage() {
     }
   }
 
-  function renderPostcodeLayer(Postcode) {
+  function renderPostcodeLayer(Postcode, target = addressTarget) {
     const layer = postcodeLayerRef.current;
     if (!layer) return;
 
@@ -130,7 +162,7 @@ function HomePage() {
       oncomplete(data) {
         const selectedAddress = getSelectedPostcodeAddress(data);
         setIsPostcodeOpen(false);
-        applyPostcodeAddress(selectedAddress);
+        applyPostcodeAddress(selectedAddress, target);
       },
       onresize(size) {
         layer.style.height = `${Math.min(size.height, 520)}px`;
@@ -141,16 +173,17 @@ function HomePage() {
     }).embed(layer);
   }
 
-  async function handleOpenPostcode() {
+  async function handleOpenPostcode(target = "start") {
     if (isPostcodeLoading) return;
 
     try {
+      setAddressTarget(target);
       setIsPostcodeLoading(true);
       clearMessages();
       setPostcodeMessage("");
       const Postcode = await loadPostcodeScript();
       setIsPostcodeOpen(true);
-      window.requestAnimationFrame(() => renderPostcodeLayer(Postcode));
+      window.requestAnimationFrame(() => renderPostcodeLayer(Postcode, target));
     } catch (err) {
       setPostcodeMessage(
         err.message ||
@@ -205,13 +238,25 @@ function HomePage() {
       clearMessages();
       setRecommendationMeta(null);
 
-      const response = await createAddressRoundTripRoute({
-        ...conditions,
-        address: routeLocation.address.trim(),
-        latitude: routeLocation.latitude,
-        longitude: routeLocation.longitude,
-        seed: Date.now(),
-      });
+      const seed = Date.now();
+      const response = isPointToPoint
+        ? await createAddressPointToPointRoute({
+            ...conditions,
+            startAddress: routeLocation.address.trim(),
+            startLatitude: routeLocation.latitude,
+            startLongitude: routeLocation.longitude,
+            endAddress: destinationLocation.address.trim(),
+            endLatitude: destinationLocation.latitude,
+            endLongitude: destinationLocation.longitude,
+            seed,
+          })
+        : await createAddressRoundTripRoute({
+            ...conditions,
+            address: routeLocation.address.trim(),
+            latitude: routeLocation.latitude,
+            longitude: routeLocation.longitude,
+            seed,
+          });
 
       setCurrentCourse(response.data);
       setRecommendationMeta(response.meta || null);
@@ -254,20 +299,55 @@ function HomePage() {
 
       <h1 className="home-title">오늘은 어디로 걸어볼까요?</h1>
 
+      <section className="condition-section">
+        <h2 className="condition-title">
+          <Icon name="runner" size={28} className="icon-green" />
+          코스 방식
+        </h2>
+        <div className="recommendation-mode-group">
+          <button
+            className={`recommendation-mode${
+              routeMode === ROUTE_MODES.ROUND_TRIP ? " selected" : ""
+            }`}
+            type="button"
+            onClick={() => handleRouteModeChange(ROUTE_MODES.ROUND_TRIP)}
+          >
+            <span className="recommendation-mode-label">순환 코스</span>
+            <span className="recommendation-mode-desc">
+              출발지로 다시 돌아오는 코스
+            </span>
+          </button>
+          <button
+            className={`recommendation-mode${
+              isPointToPoint ? " selected" : ""
+            }`}
+            type="button"
+            onClick={() => handleRouteModeChange(ROUTE_MODES.POINT_TO_POINT)}
+          >
+            <span className="recommendation-mode-label">출발-도착 코스</span>
+            <span className="recommendation-mode-desc">
+              목적지까지 산책하듯 이동
+            </span>
+          </button>
+        </div>
+      </section>
+
       <section className="condition-section address-section">
         <h2 className="condition-title">
           <Icon name="pin" size={28} className="icon-green" />
-          출발 주소
+          출발지
         </h2>
         <div className="address-action-row">
           <button
             className="btn-postcode"
             type="button"
-            onClick={handleOpenPostcode}
+            onClick={() => handleOpenPostcode("start")}
             disabled={isPostcodeLoading || isGeocodingAddress}
           >
             <Icon name="search" size={21} />
-            {isPostcodeLoading ? "불러오는 중..." : "주소 찾기"}
+            {isPostcodeLoading && addressTarget === "start"
+              ? "불러오는 중..."
+              : "주소 찾기"}
           </button>
           <button
             className="btn-current-location"
@@ -276,18 +356,18 @@ function HomePage() {
             disabled={isLoading}
           >
             <Icon name="pin" size={21} />
-            현재 위치
+            현재 위치를 출발지로 사용
           </button>
         </div>
         <div className="selected-address-panel">
-          <span className="selected-address-label">선택된 주소</span>
+          <span className="selected-address-label">선택된 출발지</span>
           <span className="selected-address-value">
             {hasLocation
               ? routeLocation.address
-              : "주소 찾기에서 출발 주소를 선택해 주세요."}
+              : "주소 찾기에서 출발지를 선택해 주세요."}
           </span>
         </div>
-        {postcodeMessage && (
+        {postcodeMessage && addressTarget === "start" && (
           <p
             className={
               isGeocodingAddress ? "address-search-message" : "form-error"
@@ -299,7 +379,7 @@ function HomePage() {
         <div className="address-helper-row">
           {!hasLocation && (
             <p className="address-helper">
-              주소 찾기에서 주소를 선택해야 코스를 생성할 수 있습니다.
+              주소 찾기에서 출발지를 선택해야 코스를 생성할 수 있습니다.
             </p>
           )}
           {routeLocation.latitude !== null &&
@@ -307,7 +387,7 @@ function HomePage() {
               <p className="address-helper">{GPS_LOCATION_NOTICE}</p>
             )}
         </div>
-        {isPostcodeOpen && (
+        {isPostcodeOpen && addressTarget === "start" && (
           <div className="postcode-overlay" role="dialog" aria-modal="true">
             <div className="postcode-overlay-header">
               <span className="postcode-overlay-title">주소 찾기</span>
@@ -328,6 +408,71 @@ function HomePage() {
         )}
       </section>
 
+      {isPointToPoint && (
+        <section className="condition-section address-section">
+          <h2 className="condition-title">
+            <Icon name="pin" size={28} className="icon-green" />
+            도착지
+          </h2>
+          <div className="address-action-row single-action">
+            <button
+              className="btn-postcode"
+              type="button"
+              onClick={() => handleOpenPostcode("destination")}
+              disabled={isPostcodeLoading || isGeocodingAddress}
+            >
+              <Icon name="search" size={21} />
+              {isPostcodeLoading && addressTarget === "destination"
+                ? "불러오는 중..."
+                : "주소 찾기"}
+            </button>
+          </div>
+          <div className="selected-address-panel">
+            <span className="selected-address-label">선택된 도착지</span>
+            <span className="selected-address-value">
+              {hasDestination
+                ? destinationLocation.address
+                : "주소 찾기에서 도착지를 선택해 주세요."}
+            </span>
+          </div>
+          {!hasDestination && (
+            <div className="address-helper-row">
+              <p className="address-helper">
+                도착지는 주소 검색으로 선택해 주세요.
+              </p>
+            </div>
+          )}
+          {postcodeMessage && addressTarget === "destination" && (
+            <p
+              className={
+                isGeocodingAddress ? "address-search-message" : "form-error"
+              }
+            >
+              {postcodeMessage}
+            </p>
+          )}
+          {isPostcodeOpen && addressTarget === "destination" && (
+            <div className="postcode-overlay" role="dialog" aria-modal="true">
+              <div className="postcode-overlay-header">
+                <span className="postcode-overlay-title">주소 찾기</span>
+                <button
+                  className="btn-postcode-close"
+                  type="button"
+                  onClick={handleClosePostcode}
+                >
+                  닫기
+                </button>
+              </div>
+              <div
+                className="postcode-layer"
+                ref={postcodeLayerRef}
+                aria-label="우편번호 주소 검색"
+              />
+            </div>
+          )}
+        </section>
+      )}
+
       <section className="condition-section">
         <h2 className="condition-title">
           <Icon name="pin" size={28} className="icon-green" />
@@ -344,6 +489,11 @@ function HomePage() {
             </button>
           ))}
         </div>
+        {isPointToPoint && (
+          <p className="address-search-message">
+            {POINT_TO_POINT_DISTANCE_NOTICE}
+          </p>
+        )}
       </section>
 
       <section className="condition-section">

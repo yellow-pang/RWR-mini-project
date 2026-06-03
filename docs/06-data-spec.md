@@ -46,6 +46,16 @@ Step 23에서는 주소 후보 목록을 서버 `POST /locations/search`가 아�
 
 클라이언트는 우편번호 서비스에서 받은 기본 도로명/지번 주소를 좌표 변환 API에 전달한다. 좌표 변환에 성공하면 선택 주소와 좌표를 `routeLocation`에 저장하고, 실패하면 저장하지 않는다. 상세주소, 우편번호, 건물명 등은 이번 단계에서 PostgreSQL 또는 전역 상태에 저장하지 않는다.
 
+### 2026.06.03 출발-도착 코스 데이터 보정 기록
+
+Step 26에서는 생성형 ORS 코스에 `routeMode` 값을 추가해 순환 코스와 출발-도착 코스를 구분한다. 순환 코스는 `roundTrip`, 출발-도착 코스는 `pointToPoint`로 표현한다.
+
+출발-도착 코스 요청은 출발지 주소/좌표와 도착지 주소/좌표를 함께 서버에 전달한다. 클라이언트 전역 상태는 기존 출발 위치인 `routeLocation`에 더해 `destinationLocation`을 관리한다. 두 위치 모두 좌표가 확정된 경우에만 출발-도착 코스를 생성할 수 있다.
+
+서버는 출발지와 도착지 사이의 랜덤 경유지를 좌표 계산 기반으로 만들고 ORS Directions API에 `coordinates` 배열로 전달한다. ORS 경로 생성이 실패하면 경유지를 바꿔 최대 3회 재시도한다. 최종 실패 시 저장 DB 코스 fallback은 사용하지 않는다.
+
+출발-도착 생성형 코스도 아직 PostgreSQL에 저장하지 않는다. 따라서 `favorites`, `history` 테이블에는 생성형 출발-도착 코스를 저장하지 않으며, 공유도 복원 가능한 상세 ID가 아니라 서비스 URL과 요약 문구 중심으로 동작한다.
+
 ### DB 테이블 관계 (ERD)
 
 ```mermaid
@@ -395,7 +405,53 @@ GPS 입력 보조용 API다. 실패해도 좌표 자체는 추천 기준점으�
 
 응답은 생성형 ORS 코스 또는 가까운 DB fallback 코스를 반환한다. fallback 여부는 `meta.usedFallback`으로 확인한다.
 
----
+#### `POST /routes/address-point-to-point` — 출발/도착 기준 랜덤 산책 경로 생성
+
+출발지와 도착지를 기준으로 ORS 보행 경로를 생성한다. 좌표가 있으면 좌표를 우선 사용하고, 좌표가 없으면 주소를 카카오 Local API로 변환한다.
+
+거리 조건은 출발지부터 도착지까지의 전체 예상 거리로 해석한다. 출발지와 도착지 사이의 기본 거리가 선택 거리보다 길 것으로 보이면 서버는 우회 경유지를 최소화하고 `meta.notice`에 안내 문구를 포함한다.
+
+```json
+// Request Body
+{
+  "startAddress": "서울 성동구 왕십리로 63",
+  "startLatitude": 37.5446,
+  "startLongitude": 127.0374,
+  "endAddress": "서울 성동구 ...",
+  "endLatitude": 37.55,
+  "endLongitude": 127.04,
+  "distance": 3,
+  "time": 30,
+  "type": "walk",
+  "seed": 42
+}
+```
+
+```json
+// Response
+{
+  "success": true,
+  "data": {
+    "id": "generated-ors-...",
+    "title": "출발-도착 랜덤 산책 코스",
+    "source": "ors",
+    "routeMode": "pointToPoint",
+    "geometry": {
+      "type": "LineString",
+      "coordinates": []
+    }
+  },
+  "meta": {
+    "usedFallback": false,
+    "retryCount": 0,
+    "notice": "출발지와 목적지 사이를 산책하듯 걸을 수 있는 경로를 생성했습니다."
+  }
+}
+```
+
+ORS 경로 생성이 실패하면 서버는 랜덤 경유지를 바꿔 최대 3회까지 재시도한다. 3회 모두 실패하면 저장 DB 코스 fallback 없이 실패 응답을 반환한다.
+
+--- 
 
 ### 즐겨찾기 API
 

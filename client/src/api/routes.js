@@ -56,3 +56,46 @@ export async function createAddressRoundTripRoute({
     body: JSON.stringify(body),
   });
 }
+
+export async function createAddressPointToPointRoute({
+  startAddress,
+  startLatitude,
+  startLongitude,
+  endAddress,
+  endLatitude,
+  endLongitude,
+  distance,
+  time,
+  type,
+  seed,
+}) {
+  const body = {
+    startAddress,
+    endAddress,
+    distance,
+    time,
+    type,
+    seed,
+  };
+
+  if (startLatitude !== null && startLatitude !== undefined) {
+    body.startLatitude = startLatitude;
+  }
+
+  if (startLongitude !== null && startLongitude !== undefined) {
+    body.startLongitude = startLongitude;
+  }
+
+  if (endLatitude !== null && endLatitude !== undefined) {
+    body.endLatitude = endLatitude;
+  }
+
+  if (endLongitude !== null && endLongitude !== undefined) {
+    body.endLongitude = endLongitude;
+  }
+
+  return requestJson(buildUrl("/routes/address-point-to-point"), {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
