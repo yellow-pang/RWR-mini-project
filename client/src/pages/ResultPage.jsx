@@ -8,13 +8,24 @@ import {
 import CourseCard from "../components/CourseCard";
 import Icon from "../components/Icon";
 import { ROUTE_MODES } from "../constants/recommendationModes";
+import { TARGET_MODES } from "../constants/courseOptions";
 import { useCourse } from "../hooks/useCourse";
 import { useFavoriteStatus } from "../hooks/useFavoriteStatus";
-import { getTypeIconName, getTypeLabel } from "../utils/courseDisplay";
+import {
+  calculateEstimatedMinutes,
+  calculateTargetDistanceKm,
+  formatDistanceKm,
+  getTypeIconName,
+  getTypeLabel,
+} from "../utils/courseDisplay";
 import {
   HISTORY_SAVE_FAILED_MESSAGE,
   saveHistoryQuietly,
 } from "../utils/history";
+
+function createRouteSeed() {
+  return Date.now();
+}
 
 function ResultPage() {
   const navigate = useNavigate();
@@ -35,20 +46,44 @@ function ResultPage() {
   const course = currentCourse;
   const isGeneratedRoute = course?.source === "ors";
   const isPointToPoint = routeMode === ROUTE_MODES.POINT_TO_POINT;
+  const targetMode = conditions.targetMode || TARGET_MODES.DISTANCE;
+  const isDistanceTarget = targetMode === TARGET_MODES.DISTANCE;
+  const targetDistanceKm =
+    isDistanceTarget || !conditions.time || !conditions.type
+      ? conditions.distance
+      : calculateTargetDistanceKm(conditions.time, conditions.type);
+  const estimatedMinutes =
+    targetDistanceKm && conditions.type
+      ? calculateEstimatedMinutes(targetDistanceKm, conditions.type)
+      : null;
   const favorite = useFavoriteStatus(isGeneratedRoute ? null : course?.id);
 
+  function buildRouteRequestPayload(seed) {
+    return {
+      distance: targetDistanceKm,
+      time: estimatedMinutes,
+      type: conditions.type,
+      targetMode,
+      targetDistanceKm,
+      targetMinutes: isDistanceTarget ? null : conditions.time,
+      estimatedMinutes,
+      seed,
+    };
+  }
+
   async function handleRecommendAgain() {
-    if (!conditions.distance || isLoading) return;
+    if (!targetDistanceKm || isLoading) return;
 
     try {
       setIsLoading(true);
       setRetryMessage("");
       setHistoryNotice("");
 
-      const seed = Date.now();
+      const seed = createRouteSeed();
+      const routeRequestPayload = buildRouteRequestPayload(seed);
       const response = isPointToPoint
         ? await createAddressPointToPointRoute({
-            ...conditions,
+            ...routeRequestPayload,
             startAddress: routeLocation.address,
             startLatitude: routeLocation.latitude,
             startLongitude: routeLocation.longitude,
@@ -58,11 +93,10 @@ function ResultPage() {
             seed,
           })
         : await createAddressRoundTripRoute({
-            ...conditions,
+            ...routeRequestPayload,
             address: routeLocation.address,
             latitude: routeLocation.latitude,
             longitude: routeLocation.longitude,
-            seed,
             exclude: isGeneratedRoute ? undefined : course?.id,
           });
 
@@ -114,15 +148,27 @@ function ResultPage() {
           <h1 className="page-header-title">오늘의 코스 추천</h1>
           <span />
         </header>
-        {conditions.distance && (
+        {targetDistanceKm && (
           <div className="condition-badges">
             <span className="condition-badge">
-              <Icon name="pin" size={24} className="icon-green" />
-              {conditions.distance}km
+              <Icon
+                name={isDistanceTarget ? "pin" : "clock"}
+                size={24}
+                className="icon-green"
+              />
+              {isDistanceTarget
+                ? `목표 ${formatDistanceKm(targetDistanceKm)}`
+                : `목표 ${conditions.time}분`}
             </span>
             <span className="condition-badge">
-              <Icon name="clock" size={24} className="icon-green" />
-              {conditions.time}분
+              <Icon
+                name={isDistanceTarget ? "clock" : "pin"}
+                size={24}
+                className="icon-green"
+              />
+              {isDistanceTarget
+                ? `예상 ${estimatedMinutes}분`
+                : `예상 ${formatDistanceKm(targetDistanceKm)}`}
             </span>
             <span className="condition-badge">
               <Icon

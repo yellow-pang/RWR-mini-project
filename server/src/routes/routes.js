@@ -17,17 +17,15 @@ router.post(
       .withMessage("longitude는 -180~180 사이의 숫자여야 합니다.")
       .toFloat(),
     body("distance")
-      .isInt()
-      .withMessage("distance는 정수여야 합니다.")
-      .toInt()
-      .isIn([1, 3, 5])
-      .withMessage("distance는 1, 3, 5 중 하나여야 합니다."),
+      .isFloat({ min: 0.5, max: 10 })
+      .withMessage("distance는 0.5~10 사이의 숫자여야 합니다.")
+      .toFloat(),
     body("time")
-      .isInt()
-      .withMessage("time은 정수여야 합니다.")
+      .isInt({ min: 5, max: 120 })
+      .withMessage("time은 5~120 사이의 정수여야 합니다.")
       .toInt()
-      .isIn([15, 30, 60])
-      .withMessage("time은 15, 30, 60 중 하나여야 합니다."),
+      .custom((value) => value % 1 === 0)
+      .withMessage("time은 분 단위 정수여야 합니다."),
     body("type")
       .trim()
       .notEmpty()
@@ -38,6 +36,20 @@ router.post(
       .optional()
       .isInt({ min: 1 })
       .withMessage("seed는 양의 정수여야 합니다.")
+      .toInt(),
+    body("targetMode")
+      .optional()
+      .isIn(["distance", "time"])
+      .withMessage("targetMode는 distance 또는 time이어야 합니다."),
+    body("targetDistanceKm")
+      .optional({ values: "null" })
+      .isFloat({ min: 0.5, max: 10 })
+      .withMessage("targetDistanceKm는 0.5~10 사이의 숫자여야 합니다.")
+      .toFloat(),
+    body("targetMinutes")
+      .optional({ values: "null" })
+      .isInt({ min: 5, max: 120 })
+      .withMessage("targetMinutes는 5~120 사이의 정수여야 합니다.")
       .toInt(),
   ],
   routesController.createRoundTrip,
@@ -75,17 +87,13 @@ router.post(
       return true;
     }),
     body("distance")
-      .isInt()
-      .withMessage("distance는 정수여야 합니다.")
-      .toInt()
-      .isIn([1, 3, 5])
-      .withMessage("distance는 1, 3, 5 중 하나여야 합니다."),
+      .isFloat({ min: 0.5, max: 10 })
+      .withMessage("distance는 0.5~10 사이의 숫자여야 합니다.")
+      .toFloat(),
     body("time")
-      .isInt()
-      .withMessage("time은 정수여야 합니다.")
-      .toInt()
-      .isIn([15, 30, 60])
-      .withMessage("time은 15, 30, 60 중 하나여야 합니다."),
+      .isInt({ min: 5, max: 120 })
+      .withMessage("time은 5~120 사이의 정수여야 합니다.")
+      .toInt(),
     body("type")
       .trim()
       .notEmpty()
@@ -96,6 +104,20 @@ router.post(
       .optional()
       .isInt({ min: 1 })
       .withMessage("seed는 양의 정수여야 합니다.")
+      .toInt(),
+    body("targetMode")
+      .optional()
+      .isIn(["distance", "time"])
+      .withMessage("targetMode는 distance 또는 time이어야 합니다."),
+    body("targetDistanceKm")
+      .optional({ values: "null" })
+      .isFloat({ min: 0.5, max: 10 })
+      .withMessage("targetDistanceKm는 0.5~10 사이의 숫자여야 합니다.")
+      .toFloat(),
+    body("targetMinutes")
+      .optional({ values: "null" })
+      .isInt({ min: 5, max: 120 })
+      .withMessage("targetMinutes는 5~120 사이의 정수여야 합니다.")
       .toInt(),
     body("exclude")
       .optional({ values: "falsy" })
@@ -166,17 +188,13 @@ router.post(
       return true;
     }),
     body("distance")
-      .isInt()
-      .withMessage("distance는 정수여야 합니다.")
-      .toInt()
-      .isIn([1, 3, 5])
-      .withMessage("distance는 1, 3, 5 중 하나여야 합니다."),
+      .isFloat({ min: 0.5, max: 10 })
+      .withMessage("distance는 0.5~10 사이의 숫자여야 합니다.")
+      .toFloat(),
     body("time")
-      .isInt()
-      .withMessage("time은 정수여야 합니다.")
-      .toInt()
-      .isIn([15, 30, 60])
-      .withMessage("time은 15, 30, 60 중 하나여야 합니다."),
+      .isInt({ min: 5, max: 120 })
+      .withMessage("time은 5~120 사이의 정수여야 합니다.")
+      .toInt(),
     body("type")
       .trim()
       .notEmpty()
@@ -187,6 +205,20 @@ router.post(
       .optional()
       .isInt({ min: 1 })
       .withMessage("seed는 양의 정수여야 합니다.")
+      .toInt(),
+    body("targetMode")
+      .optional()
+      .isIn(["distance", "time"])
+      .withMessage("targetMode는 distance 또는 time이어야 합니다."),
+    body("targetDistanceKm")
+      .optional({ values: "null" })
+      .isFloat({ min: 0.5, max: 10 })
+      .withMessage("targetDistanceKm는 0.5~10 사이의 숫자여야 합니다.")
+      .toFloat(),
+    body("targetMinutes")
+      .optional({ values: "null" })
+      .isInt({ min: 5, max: 120 })
+      .withMessage("targetMinutes는 5~120 사이의 정수여야 합니다.")
       .toInt(),
   ],
   routesController.createAddressPointToPoint,

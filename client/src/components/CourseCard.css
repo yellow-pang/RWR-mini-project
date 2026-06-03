@@ -118,6 +118,32 @@
   font-size: 14px;
 }
 
+.course-target-box {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 14px;
+  border: 1px solid var(--color-border-light);
+  border-radius: 10px;
+  background: var(--color-surface-muted);
+}
+
+.course-target-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-text-sub);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.course-target-row strong {
+  color: var(--color-text-main);
+  font-size: 15px;
+  white-space: nowrap;
+}
+
 .course-reason-box {
   margin-bottom: 20px;
   padding: 18px;
