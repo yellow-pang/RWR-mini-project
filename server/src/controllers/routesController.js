@@ -1,16 +1,9 @@
 const { validationResult } = require("express-validator");
-const coursesService = require("../services/coursesService");
 const geocodingService = require("../services/geocodingService");
 const orsService = require("../services/orsService");
 
-const ADDRESS_ROUTE_NOTICE =
-  "입력한 주소를 기준으로 실제 도로망을 따라 순환 코스를 생성했습니다.";
-const ADDRESS_FALLBACK_NOTICE =
-  "경로 생성이 원활하지 않아 입력 위치와 가까운 저장 코스로 추천했습니다.";
-const POINT_TO_POINT_NOTICE =
-  "출발지와 목적지 사이를 산책하듯 걸을 수 있는 경로를 생성했습니다.";
-const POINT_TO_POINT_MINIMIZED_NOTICE =
-  "출발지와 도착지 사이의 기본 거리가 선택한 거리보다 길어, 우회 경유지를 줄여 경로를 생성했습니다.";
+const ADDRESS_ROUTE_NOTICE = "목표 거리와 가까운 순환 코스를 찾았습니다.";
+const POINT_TO_POINT_NOTICE = "목표 거리와 가까운 출발-도착 코스를 찾았습니다.";
 
 exports.createRoundTrip = async (req, res, next) => {
   const errors = validationResult(req);
@@ -22,7 +15,11 @@ exports.createRoundTrip = async (req, res, next) => {
 
   try {
     const route = await orsService.createRoundTrip(req.body);
-    res.json({ success: true, data: route });
+    res.json({
+      success: true,
+      data: route,
+      meta: route.targetSummary || null,
+    });
   } catch (err) {
     if (err.status) {
       return res.status(err.status).json({
@@ -87,56 +84,12 @@ exports.createAddressRoundTrip = async (req, res, next) => {
         meta: {
           location,
           usedFallback: false,
+          ...(route.targetSummary || {}),
           notice: ADDRESS_ROUTE_NOTICE,
         },
       });
     } catch (routeError) {
-      const fallbackCourse = await coursesService.findNearestRandom({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        distance: req.body.distance,
-        time: req.body.time,
-        type: req.body.type,
-        exclude: req.body.exclude,
-      });
-
-      if (!fallbackCourse) {
-        throw routeError;
-      }
-
-      try {
-        const fallbackRoute = await orsService.createRoundTrip({
-          ...req.body,
-          latitude: Number(fallbackCourse.start_lat),
-          longitude: Number(fallbackCourse.start_lng),
-          originLabel: fallbackCourse.title,
-        });
-
-        return res.json({
-          success: true,
-          data: fallbackRoute,
-          meta: {
-            location,
-            usedFallback: true,
-            fallbackCourseId: fallbackCourse.id,
-            fallbackReason: routeError.message,
-            notice: ADDRESS_FALLBACK_NOTICE,
-          },
-        });
-      } catch {
-        // ORS 자체가 불안정한 경우에는 저장 코스를 그대로 제공한다.
-      }
-
-      return res.json({
-        success: true,
-        data: fallbackCourse,
-        meta: {
-          location,
-          usedFallback: true,
-          fallbackReason: routeError.message,
-          notice: ADDRESS_FALLBACK_NOTICE,
-        },
-      });
+      throw routeError;
     }
   } catch (err) {
     if (err.status) {
@@ -195,9 +148,8 @@ exports.createAddressPointToPoint = async (req, res, next) => {
         endLocation,
         usedFallback: false,
         retryCount: result.retryCount,
-        notice: result.usedMinimizedDetour
-          ? POINT_TO_POINT_MINIMIZED_NOTICE
-          : POINT_TO_POINT_NOTICE,
+        ...(result.route.targetSummary || {}),
+        notice: POINT_TO_POINT_NOTICE,
       },
     });
   } catch (err) {

@@ -28,6 +28,10 @@ export async function createAddressRoundTripRoute({
   distance,
   time,
   type,
+  targetMode,
+  targetDistanceKm,
+  targetMinutes,
+  estimatedMinutes,
   seed,
   exclude,
 }) {
@@ -36,6 +40,10 @@ export async function createAddressRoundTripRoute({
     distance,
     time,
     type,
+    targetMode,
+    targetDistanceKm,
+    targetMinutes,
+    estimatedMinutes,
     seed,
   };
 
@@ -67,6 +75,10 @@ export async function createAddressPointToPointRoute({
   distance,
   time,
   type,
+  targetMode,
+  targetDistanceKm,
+  targetMinutes,
+  estimatedMinutes,
   seed,
 }) {
   const body = {
@@ -75,6 +87,10 @@ export async function createAddressPointToPointRoute({
     distance,
     time,
     type,
+    targetMode,
+    targetDistanceKm,
+    targetMinutes,
+    estimatedMinutes,
     seed,
   };
 

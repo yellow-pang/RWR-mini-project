@@ -35,6 +35,14 @@ exports.add = async (req, res, next) => {
         message: "이미 즐겨찾기에 추가된 코스입니다.",
       });
     }
+
+    if (err.code === "23503") {
+      return res.status(404).json({
+        success: false,
+        message: "즐겨찾기에는 저장된 DB 코스만 추가할 수 있습니다.",
+      });
+    }
+
     next(err);
   }
 };

@@ -56,6 +56,44 @@ Step 26에서는 생성형 ORS 코스에 `routeMode` 값을 추가해 순환 코
 
 출발-도착 생성형 코스도 아직 PostgreSQL에 저장하지 않는다. 따라서 `favorites`, `history` 테이블에는 생성형 출발-도착 코스를 저장하지 않으며, 공유도 복원 가능한 상세 ID가 아니라 서비스 URL과 요약 문구 중심으로 동작한다.
 
+### 2026.06.03 추천 목표 정확도 데이터 보정 기록
+
+Step 27에서는 생성형 ORS 코스 요청에 추천 기준과 계산 목표값을 함께 전달한다. 기존 `distance`, `time`, `type` 필드는 유지하되, 의미는 저장 DB 코스 필터가 아니라 생성형 코스의 목표 거리, 예상 시간, 운동 유형으로 해석한다.
+
+추가 요청 필드는 아래와 같다.
+
+| 필드 | 타입 | 설명 |
+| ---- | ---- | ---- |
+| `targetMode` | string | `distance` 또는 `time` |
+| `targetDistanceKm` | number | 최종 검증에 사용할 목표 거리 |
+| `targetMinutes` | number 또는 null | 시간 기준 선택 시 사용자가 선택한 목표 시간 |
+| `estimatedMinutes` | number | 목표 거리와 운동 유형 속도로 계산한 예상 시간 |
+
+서버는 ORS 응답의 실제 `summary.distance`, `summary.duration`을 기준으로 후보를 검증한다. 검증을 통과한 생성형 코스에는 `targetSummary`를 포함한다.
+
+```json
+{
+  "targetSummary": {
+    "targetMode": "distance",
+    "targetDistanceKm": 3,
+    "targetMinutes": null,
+    "estimatedMinutes": 45,
+    "actualDistanceKm": 3.2,
+    "actualMinutes": 48,
+    "distanceDeltaKm": 0.2,
+    "acceptedToleranceRate": 0.2,
+    "distanceRangeKm": {
+      "min": 2.4,
+      "max": 3.6
+    },
+    "candidateCount": 5,
+    "retryCount": 2
+  }
+}
+```
+
+생성형 코스 목표 검증에 실패하면 저장 DB 코스를 fallback으로 반환하지 않는다. 이는 사용자가 선택한 주소와 목표 조건에 맞지 않는 저장 코스를 보여주는 혼동을 막기 위한 정책이다.
+
 ### DB 테이블 관계 (ERD)
 
 ```mermaid

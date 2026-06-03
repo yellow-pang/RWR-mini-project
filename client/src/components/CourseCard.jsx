@@ -1,5 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { getMoodLabel, getTypeLabel } from "../utils/courseDisplay";
+import {
+  formatDistanceKm,
+  formatMinutes,
+  formatSignedDistanceKm,
+  getMoodLabel,
+  getTypeLabel,
+} from "../utils/courseDisplay";
 import Icon from "./Icon";
 import MapView from "./MapView";
 import "./CourseCard.css";
@@ -16,6 +22,7 @@ function CourseCard({
   const courseId = course.courseId || course.id;
   const isGeneratedRoute = course.source === "ors";
   const hasFavoriteAction = Boolean(onFavoriteToggle && !isGeneratedRoute);
+  const targetSummary = course.targetSummary;
 
   function handleDetail() {
     navigate(`/courses/${courseId}`, { state: { course } });
@@ -58,6 +65,35 @@ function CourseCard({
 
       {course.description && (
         <p className="course-description">{course.description}</p>
+      )}
+
+      {targetSummary && (
+        <div className="course-target-box">
+          <div className="course-target-row">
+            <span>목표 거리</span>
+            <strong>{formatDistanceKm(targetSummary.targetDistanceKm)}</strong>
+          </div>
+          {targetSummary.targetMinutes && (
+            <div className="course-target-row">
+              <span>목표 시간</span>
+              <strong>{targetSummary.targetMinutes}분</strong>
+            </div>
+          )}
+          <div className="course-target-row">
+            <span>실제 추천 거리</span>
+            <strong>{formatDistanceKm(targetSummary.actualDistanceKm)}</strong>
+          </div>
+          <div className="course-target-row">
+            <span>예상 시간</span>
+            <strong>{formatMinutes(targetSummary.actualMinutes)}</strong>
+          </div>
+          <div className="course-target-row">
+            <span>목표와의 차이</span>
+            <strong>
+              {formatSignedDistanceKm(targetSummary.distanceDeltaKm)}
+            </strong>
+          </div>
+        </div>
       )}
 
       {course.reason && (

@@ -7,11 +7,22 @@ import {
   createAddressRoundTripRoute,
 } from "../api/routes";
 import {
+  CUSTOM_DISTANCE_RANGE,
+  CUSTOM_TIME_RANGE,
   DISTANCE_OPTIONS,
+  TARGET_MODE_OPTIONS,
+  TARGET_MODES,
   TIME_OPTIONS,
   TYPE_OPTIONS,
 } from "../constants/courseOptions";
-import { getTypeIconName } from "../utils/courseDisplay";
+import {
+  calculateEstimatedMinutes,
+  calculateTargetDistanceKm,
+  formatDistanceKm,
+  formatMinutes,
+  getDistanceRange,
+  getTypeIconName,
+} from "../utils/courseDisplay";
 import {
   GPS_ADDRESS_FALLBACK_NOTICE,
   GPS_ADDRESS_NOTICE,
@@ -31,6 +42,10 @@ import {
   getSelectedPostcodeAddress,
   loadPostcodeScript,
 } from "../utils/postcode";
+
+function createRouteSeed() {
+  return Date.now();
+}
 
 function HomePage() {
   const navigate = useNavigate();
@@ -56,10 +71,24 @@ function HomePage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [noticeMessage, setNoticeMessage] = useState("");
 
+  const targetMode = conditions.targetMode || TARGET_MODES.DISTANCE;
+  const isDistanceTarget = targetMode === TARGET_MODES.DISTANCE;
+  const targetDistanceKm =
+    isDistanceTarget || !conditions.time || !conditions.type
+      ? conditions.distance
+      : calculateTargetDistanceKm(conditions.time, conditions.type);
+  const estimatedMinutes =
+    targetDistanceKm && conditions.type
+      ? calculateEstimatedMinutes(targetDistanceKm, conditions.type)
+      : null;
+  const targetRange = targetDistanceKm
+    ? getDistanceRange(targetDistanceKm)
+    : null;
   const allSelected =
-    conditions.distance !== null &&
-    conditions.time !== null &&
-    conditions.type !== null;
+    Boolean(conditions.type) &&
+    (isDistanceTarget
+      ? conditions.distance !== null
+      : conditions.time !== null);
   const hasLocation =
     routeLocation.latitude !== null && routeLocation.longitude !== null;
   const hasDestination =
@@ -85,7 +114,46 @@ function HomePage() {
 
   function handleSelect(key, value) {
     clearMessages();
-    setConditions((prev) => ({ ...prev, [key]: value }));
+    setConditions((prev) => {
+      if (key === "distance" && value === "custom") {
+        return {
+          ...prev,
+          distance: prev.distance || CUSTOM_DISTANCE_RANGE.defaultValue,
+          isCustomDistance: true,
+        };
+      }
+
+      if (key === "time" && value === "custom") {
+        return {
+          ...prev,
+          time: prev.time || CUSTOM_TIME_RANGE.defaultValue,
+          isCustomTime: true,
+        };
+      }
+
+      if (key === "distance") {
+        return { ...prev, distance: value, isCustomDistance: false };
+      }
+
+      if (key === "time") {
+        return { ...prev, time: value, isCustomTime: false };
+      }
+
+      return { ...prev, [key]: value };
+    });
+  }
+
+  function handleTargetModeChange(nextTargetMode) {
+    clearMessages();
+    setConditions((prev) => ({
+      ...prev,
+      targetMode: nextTargetMode,
+    }));
+  }
+
+  function handleCustomTargetChange(key, value) {
+    clearMessages();
+    setConditions((prev) => ({ ...prev, [key]: Number(value) }));
   }
 
   function handleRouteModeChange(nextRouteMode) {
@@ -98,13 +166,33 @@ function HomePage() {
 
   function handleReset() {
     clearMessages();
-    setConditions({ distance: null, time: null, type: null });
+    setConditions({
+      targetMode: TARGET_MODES.DISTANCE,
+      distance: null,
+      time: null,
+      type: null,
+      isCustomDistance: false,
+      isCustomTime: false,
+    });
     setRouteMode(ROUTE_MODES.ROUND_TRIP);
     setRouteLocation(getEmptyLocation());
     setDestinationLocation(getEmptyLocation());
     setPostcodeMessage("");
     setIsPostcodeOpen(false);
     setRecommendationMeta(null);
+  }
+
+  function buildRouteRequestPayload(seed) {
+    return {
+      distance: targetDistanceKm,
+      time: estimatedMinutes,
+      type: conditions.type,
+      targetMode,
+      targetDistanceKm,
+      targetMinutes: isDistanceTarget ? null : conditions.time,
+      estimatedMinutes,
+      seed,
+    };
   }
 
   async function applyPostcodeAddress(address, target = addressTarget) {
@@ -238,10 +326,11 @@ function HomePage() {
       clearMessages();
       setRecommendationMeta(null);
 
-      const seed = Date.now();
+      const seed = createRouteSeed();
+      const routeRequestPayload = buildRouteRequestPayload(seed);
       const response = isPointToPoint
         ? await createAddressPointToPointRoute({
-            ...conditions,
+            ...routeRequestPayload,
             startAddress: routeLocation.address.trim(),
             startLatitude: routeLocation.latitude,
             startLongitude: routeLocation.longitude,
@@ -251,11 +340,10 @@ function HomePage() {
             seed,
           })
         : await createAddressRoundTripRoute({
-            ...conditions,
+            ...routeRequestPayload,
             address: routeLocation.address.trim(),
             latitude: routeLocation.latitude,
             longitude: routeLocation.longitude,
-            seed,
           });
 
       setCurrentCourse(response.data);
@@ -476,39 +564,19 @@ function HomePage() {
       <section className="condition-section">
         <h2 className="condition-title">
           <Icon name="pin" size={28} className="icon-green" />
-          거리
+          추천 기준
         </h2>
-        <div className="chip-group">
-          {DISTANCE_OPTIONS.map((opt) => (
+        <div className="recommendation-mode-group target-mode-group">
+          {TARGET_MODE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
-              className={`chip${conditions.distance === opt.value ? " selected" : ""}`}
-              onClick={() => handleSelect("distance", opt.value)}
+              className={`recommendation-mode compact${
+                targetMode === opt.value ? " selected" : ""
+              }`}
+              type="button"
+              onClick={() => handleTargetModeChange(opt.value)}
             >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        {isPointToPoint && (
-          <p className="address-search-message">
-            {POINT_TO_POINT_DISTANCE_NOTICE}
-          </p>
-        )}
-      </section>
-
-      <section className="condition-section">
-        <h2 className="condition-title">
-          <Icon name="clock" size={28} className="icon-green" />
-          소요 시간
-        </h2>
-        <div className="chip-group">
-          {TIME_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              className={`chip${conditions.time === opt.value ? " selected" : ""}`}
-              onClick={() => handleSelect("time", opt.value)}
-            >
-              {opt.label}
+              <span className="recommendation-mode-label">{opt.label}</span>
             </button>
           ))}
         </div>
@@ -531,6 +599,133 @@ function HomePage() {
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="condition-section">
+        <h2 className="condition-title">
+          <Icon
+            name={isDistanceTarget ? "pin" : "clock"}
+            size={28}
+            className="icon-green"
+          />
+          {isDistanceTarget ? "거리 선택" : "시간 선택"}
+        </h2>
+        {isDistanceTarget ? (
+          <>
+            <div className="chip-group target-chip-group">
+              {DISTANCE_OPTIONS.map((opt) => {
+                const isSelected =
+                  opt.value === "custom"
+                    ? conditions.isCustomDistance
+                    : !conditions.isCustomDistance &&
+                      conditions.distance === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    className={`chip${isSelected ? " selected" : ""}`}
+                    onClick={() => handleSelect("distance", opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            {conditions.isCustomDistance && (
+              <div className="custom-target-control">
+                <label className="custom-target-label" htmlFor="distance-range">
+                  현재 선택: {formatDistanceKm(conditions.distance)}
+                </label>
+                <input
+                  id="distance-range"
+                  className="target-range"
+                  type="range"
+                  min={CUSTOM_DISTANCE_RANGE.min}
+                  max={CUSTOM_DISTANCE_RANGE.max}
+                  step={CUSTOM_DISTANCE_RANGE.step}
+                  value={conditions.distance || CUSTOM_DISTANCE_RANGE.defaultValue}
+                  onChange={(event) =>
+                    handleCustomTargetChange("distance", event.target.value)
+                  }
+                />
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="chip-group target-chip-group">
+              {TIME_OPTIONS.map((opt) => {
+                const isSelected =
+                  opt.value === "custom"
+                    ? conditions.isCustomTime
+                    : !conditions.isCustomTime && conditions.time === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    className={`chip${isSelected ? " selected" : ""}`}
+                    onClick={() => handleSelect("time", opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            {conditions.isCustomTime && (
+              <div className="custom-target-control">
+                <label className="custom-target-label" htmlFor="time-range">
+                  현재 선택: {conditions.time}분
+                </label>
+                <input
+                  id="time-range"
+                  className="target-range"
+                  type="range"
+                  min={CUSTOM_TIME_RANGE.min}
+                  max={CUSTOM_TIME_RANGE.max}
+                  step={CUSTOM_TIME_RANGE.step}
+                  value={conditions.time || CUSTOM_TIME_RANGE.defaultValue}
+                  onChange={(event) =>
+                    handleCustomTargetChange("time", event.target.value)
+                  }
+                />
+              </div>
+            )}
+          </>
+        )}
+        {isPointToPoint && (
+          <p className="address-search-message">
+            {POINT_TO_POINT_DISTANCE_NOTICE}
+          </p>
+        )}
+        {targetDistanceKm && conditions.type && (
+          <div className="target-summary-panel">
+            <span>
+              목표 거리: <strong>{formatDistanceKm(targetDistanceKm)}</strong>
+            </span>
+            {isDistanceTarget ? (
+              <span>
+                예상 시간:{" "}
+                <strong>
+                  {getTypeIconName(conditions.type) &&
+                    `${formatMinutes(estimatedMinutes)}`}
+                </strong>
+              </span>
+            ) : (
+              <span>
+                목표 시간: <strong>{conditions.time}분</strong>
+              </span>
+            )}
+            {!isDistanceTarget && (
+              <span>
+                예상 거리: <strong>{formatDistanceKm(targetDistanceKm)}</strong>
+              </span>
+            )}
+            {targetRange && (
+              <span>
+                허용 범위: 약 {formatDistanceKm(targetRange.min)} ~{" "}
+                {formatDistanceKm(targetRange.max)}
+              </span>
+            )}
+          </div>
+        )}
       </section>
 
       {errorMessage && <p className="form-error">{errorMessage}</p>}

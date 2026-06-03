@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CourseContext } from "./courseContext";
 import { ROUTE_MODES } from "../constants/recommendationModes";
+import { TARGET_MODES } from "../constants/courseOptions";
 
 const EMPTY_ROUTE_LOCATION = {
   address: "",
@@ -12,9 +13,12 @@ const EMPTY_ROUTE_LOCATION = {
 export function CourseProvider({ children }) {
   const [routeMode, setRouteMode] = useState(ROUTE_MODES.ROUND_TRIP);
   const [conditions, setConditions] = useState({
+    targetMode: TARGET_MODES.DISTANCE,
     distance: null,
     time: null,
     type: null,
+    isCustomDistance: false,
+    isCustomTime: false,
   });
   const [currentCourse, setCurrentCourse] = useState(null);
   const [routeLocation, setRouteLocation] = useState(EMPTY_ROUTE_LOCATION);
