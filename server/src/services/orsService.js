@@ -1,7 +1,9 @@
 const ORS_BASE_URL = "https://api.openrouteservice.org/v2/directions";
 const poiService = require("./poiService");
 const {
+  POI_PREFERENCE_LABELS,
   ROUTE_THEME_LABELS,
+  normalizePoiPreferences,
   normalizeRouteTheme,
 } = require("../constants/poiCategories");
 const ORS_PROFILE_BY_TYPE = {
@@ -114,17 +116,24 @@ function buildTargetSummary({
 
 function buildPoiSummary({
   routeTheme,
+  poiPreferences,
   pois = [],
   usedPoi = false,
   poiFallback = false,
   fallbackReason,
 }) {
   const theme = normalizeRouteTheme(routeTheme);
+  const preferences = normalizePoiPreferences(poiPreferences, theme);
   const selectedPois = pois.slice(0, 3);
+  const preferenceLabels = preferences.map(
+    (preference) => POI_PREFERENCE_LABELS[preference],
+  );
 
   return {
     routeTheme: theme,
     themeLabel: ROUTE_THEME_LABELS[theme],
+    poiPreferences: preferences,
+    preferenceLabels,
     usedPoi,
     poiFallback,
     fallbackReason,
@@ -227,6 +236,10 @@ function buildGeneratedCourse({
     candidateCount,
     retryCount,
   });
+  const poiPreferenceLabel =
+    poiSummary?.preferenceLabels?.length > 0
+      ? poiSummary.preferenceLabels.join(", ")
+      : poiSummary?.themeLabel;
 
   return {
     id: `generated-ors-${Date.now()}`,
@@ -258,7 +271,7 @@ function buildGeneratedCourse({
         : `${originLabel}을 출발점으로 ORS가 실제 도로망을 따라 생성한 순환 운동 코스입니다.`,
     reason:
       poiSummary?.usedPoi
-        ? `${poiSummary.themeLabel} 분위기에 맞춰 주변 장소를 목적지로 고정하지 않고 경유 후보로 참고했습니다.`
+        ? `${poiPreferenceLabel} 분위기에 맞춰 주변 장소를 목적지로 고정하지 않고 경유 후보로 참고했습니다.`
         : routeMode === "pointToPoint"
         ? "출발지와 목적지 사이에 랜덤 경유지를 더해 바로 가는 길보다 여유 있게 걸을 수 있도록 추천합니다."
         : "선택한 거리와 운동 유형을 바탕으로 매일 다른 방향의 코스를 추천합니다.",
@@ -419,6 +432,7 @@ exports.createRoundTrip = async ({
   seed,
   originLabel,
   routeTheme = "any",
+  poiPreferences,
 }) => {
   const apiKey = process.env.ORS_API_KEY;
 
@@ -445,10 +459,15 @@ exports.createRoundTrip = async ({
   let lastError = null;
   let poiFallbackReason = "";
   const resolvedRouteTheme = normalizeRouteTheme(routeTheme);
+  const resolvedPoiPreferences = normalizePoiPreferences(
+    poiPreferences,
+    resolvedRouteTheme,
+  );
 
   try {
     const poiCandidates = await poiService.searchRouteThemePois({
       routeTheme: resolvedRouteTheme,
+      poiPreferences: resolvedPoiPreferences,
       points: [{ latitude: Number(latitude), longitude: Number(longitude) }],
       targetDistanceKm: resolvedTargetDistanceKm,
     });
@@ -476,6 +495,7 @@ exports.createRoundTrip = async ({
           attempt,
           poiSummary: buildPoiSummary({
             routeTheme: resolvedRouteTheme,
+            poiPreferences: resolvedPoiPreferences,
             pois: [poi],
             usedPoi: true,
           }),
@@ -509,6 +529,7 @@ exports.createRoundTrip = async ({
         attempt,
         poiSummary: buildPoiSummary({
           routeTheme: resolvedRouteTheme,
+          poiPreferences: resolvedPoiPreferences,
           usedPoi: false,
           poiFallback: true,
           fallbackReason:
@@ -524,7 +545,7 @@ exports.createRoundTrip = async ({
   const bestCandidate = pickBestCandidate(
     candidates,
     resolvedTargetDistanceKm,
-    resolvedRouteTheme !== "any",
+    resolvedPoiPreferences.length > 0,
   );
 
   if (!bestCandidate) {
@@ -568,6 +589,7 @@ exports.createPointToPoint = async ({
   estimatedMinutes,
   detourLevel = DETOUR_LEVELS.MEDIUM,
   routeTheme = "any",
+  poiPreferences,
   seed,
 }) => {
   const apiKey = process.env.ORS_API_KEY;
@@ -600,6 +622,10 @@ exports.createPointToPoint = async ({
   };
   const resolvedDetourLevel = normalizeDetourLevel(detourLevel);
   const resolvedRouteTheme = normalizeRouteTheme(routeTheme);
+  const resolvedPoiPreferences = normalizePoiPreferences(
+    poiPreferences,
+    resolvedRouteTheme,
+  );
   const candidates = [];
   let lastError = null;
   let poiCandidates = [];
@@ -626,7 +652,21 @@ exports.createPointToPoint = async ({
       throw error;
     }
 
-    candidates.push({ payload: directPayload, attempt: 0 });
+    candidates.push({
+      payload: directPayload,
+      attempt: 0,
+      poiSummary:
+        resolvedPoiPreferences.length > 0
+          ? buildPoiSummary({
+              routeTheme: resolvedRouteTheme,
+              poiPreferences: resolvedPoiPreferences,
+              usedPoi: false,
+              poiFallback: true,
+              fallbackReason:
+                "선택한 분위기 후보가 부족해 기본 출발-도착 코스로 추천했습니다.",
+            })
+          : undefined,
+    });
   } catch (error) {
     if (error.status === 422) {
       throw error;
@@ -637,6 +677,7 @@ exports.createPointToPoint = async ({
   try {
     poiCandidates = await poiService.searchRouteThemePois({
       routeTheme: resolvedRouteTheme,
+      poiPreferences: resolvedPoiPreferences,
       points: poiService.getPointToPointSearchCenters({ start, end }),
       targetDistanceKm: resolvedTargetDistanceKm,
     });
@@ -668,6 +709,7 @@ exports.createPointToPoint = async ({
         attempt: attempt + 1,
         poiSummary: buildPoiSummary({
           routeTheme: resolvedRouteTheme,
+          poiPreferences: resolvedPoiPreferences,
           pois: [poi],
           usedPoi: true,
         }),
@@ -706,6 +748,7 @@ exports.createPointToPoint = async ({
         attempt: attempt + 1,
         poiSummary: buildPoiSummary({
           routeTheme: resolvedRouteTheme,
+          poiPreferences: resolvedPoiPreferences,
           usedPoi: false,
           poiFallback: true,
           fallbackReason:
@@ -721,7 +764,7 @@ exports.createPointToPoint = async ({
   const bestCandidate = pickBestCandidate(
     candidates,
     resolvedTargetDistanceKm,
-    resolvedRouteTheme !== "any",
+    resolvedPoiPreferences.length > 0,
   );
 
   if (bestCandidate) {

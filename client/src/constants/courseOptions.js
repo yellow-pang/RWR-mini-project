@@ -134,3 +134,26 @@ export const ROUTE_THEME_OPTIONS = [
     description: "중간에 물을 살 수 있는 길 느낌",
   },
 ];
+
+export const POI_PREFERENCES = {
+  PARK: "park",
+  CAFE: "cafe",
+  CONVENIENCE: "convenience",
+};
+
+export const POI_PREFERENCE_LIMIT = 2;
+
+export const POI_PREFERENCE_OPTIONS = [
+  {
+    label: "공원/녹지",
+    value: POI_PREFERENCES.PARK,
+  },
+  {
+    label: "카페 근처",
+    value: POI_PREFERENCES.CAFE,
+  },
+  {
+    label: "편의점 근처",
+    value: POI_PREFERENCES.CONVENIENCE,
+  },
+];

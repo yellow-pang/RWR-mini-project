@@ -24,6 +24,9 @@ function CourseCard({
   const hasFavoriteAction = Boolean(onFavoriteToggle && !isGeneratedRoute);
   const targetSummary = course.targetSummary;
   const poiSummary = course.poiSummary;
+  const poiPreferenceLabel = poiSummary?.preferenceLabels?.length
+    ? poiSummary.preferenceLabels.join(", ")
+    : poiSummary?.themeLabel;
 
   function handleDetail() {
     navigate(`/courses/${courseId}`, { state: { course } });
@@ -115,7 +118,7 @@ function CourseCard({
           </span>
           <p className="course-reason-text">
             {poiSummary.usedPoi && poiSummary.poiNames?.length
-              ? `${poiSummary.themeLabel} 분위기에 맞춰 ${poiSummary.poiNames
+              ? `${poiPreferenceLabel} 분위기에 맞춰 ${poiSummary.poiNames
                   .slice(0, 2)
                   .join(", ")} 근처를 지나는 후보를 참고했습니다.`
               : poiSummary.fallbackReason ||

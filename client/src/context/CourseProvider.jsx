@@ -30,6 +30,7 @@ export function CourseProvider({ children }) {
     useState(EMPTY_ROUTE_LOCATION);
   const [detourLevel, setDetourLevel] = useState(DETOUR_LEVELS.MEDIUM);
   const [routeTheme, setRouteTheme] = useState(ROUTE_THEMES.ANY);
+  const [poiPreferences, setPoiPreferences] = useState([]);
   const [recommendationMeta, setRecommendationMeta] = useState(null);
 
   function swapRouteEndpoints() {
@@ -55,6 +56,8 @@ export function CourseProvider({ children }) {
         setDetourLevel,
         routeTheme,
         setRouteTheme,
+        poiPreferences,
+        setPoiPreferences,
         swapRouteEndpoints,
         recommendationMeta,
         setRecommendationMeta,

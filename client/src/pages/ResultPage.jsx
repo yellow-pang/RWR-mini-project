@@ -39,6 +39,7 @@ function ResultPage() {
     destinationLocation,
     detourLevel,
     routeTheme,
+    poiPreferences,
     recommendationMeta,
     setRecommendationMeta,
   } = useCourse();
@@ -72,6 +73,7 @@ function ResultPage() {
       estimatedMinutes,
       detourLevel,
       routeTheme,
+      poiPreferences,
       seed,
     };
   }

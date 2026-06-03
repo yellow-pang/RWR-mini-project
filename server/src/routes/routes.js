@@ -1,7 +1,11 @@
 const { Router } = require("express");
 const { body } = require("express-validator");
 const { COURSE_TYPES } = require("../constants/courseValues");
-const { ROUTE_THEME_VALUES } = require("../constants/poiCategories");
+const {
+  POI_PREFERENCE_LIMIT,
+  POI_PREFERENCE_VALUES,
+  ROUTE_THEME_VALUES,
+} = require("../constants/poiCategories");
 const routesController = require("../controllers/routesController");
 
 const router = Router();
@@ -56,6 +60,14 @@ router.post(
       .optional()
       .isIn(ROUTE_THEME_VALUES)
       .withMessage("routeTheme 값이 올바르지 않습니다."),
+    body("poiPreferences")
+      .optional()
+      .isArray({ max: POI_PREFERENCE_LIMIT })
+      .withMessage(`poiPreferences는 최대 ${POI_PREFERENCE_LIMIT}개까지 선택할 수 있습니다.`),
+    body("poiPreferences.*")
+      .optional()
+      .isIn(POI_PREFERENCE_VALUES)
+      .withMessage("poiPreferences 값이 올바르지 않습니다."),
   ],
   routesController.createRoundTrip,
 );
@@ -128,6 +140,14 @@ router.post(
       .optional()
       .isIn(ROUTE_THEME_VALUES)
       .withMessage("routeTheme 값이 올바르지 않습니다."),
+    body("poiPreferences")
+      .optional()
+      .isArray({ max: POI_PREFERENCE_LIMIT })
+      .withMessage(`poiPreferences는 최대 ${POI_PREFERENCE_LIMIT}개까지 선택할 수 있습니다.`),
+    body("poiPreferences.*")
+      .optional()
+      .isIn(POI_PREFERENCE_VALUES)
+      .withMessage("poiPreferences 값이 올바르지 않습니다."),
     body("exclude")
       .optional({ values: "falsy" })
       .trim()
@@ -233,6 +253,14 @@ router.post(
       .optional()
       .isIn(ROUTE_THEME_VALUES)
       .withMessage("routeTheme 값이 올바르지 않습니다."),
+    body("poiPreferences")
+      .optional()
+      .isArray({ max: POI_PREFERENCE_LIMIT })
+      .withMessage(`poiPreferences는 최대 ${POI_PREFERENCE_LIMIT}개까지 선택할 수 있습니다.`),
+    body("poiPreferences.*")
+      .optional()
+      .isIn(POI_PREFERENCE_VALUES)
+      .withMessage("poiPreferences 값이 올바르지 않습니다."),
     body("detourLevel")
       .optional()
       .isIn(["light", "medium", "strong"])
