@@ -9,11 +9,13 @@ import {
 import {
   CUSTOM_DISTANCE_RANGE,
   CUSTOM_TIME_RANGE,
-  DISTANCE_OPTIONS,
+  DETOUR_LEVEL_OPTIONS,
+  DETOUR_LEVELS,
   TARGET_MODE_OPTIONS,
   TARGET_MODES,
   TIME_OPTIONS,
   TYPE_OPTIONS,
+  getDistanceOptionsByType,
 } from "../constants/courseOptions";
 import {
   calculateEstimatedMinutes,
@@ -33,6 +35,7 @@ import {
 } from "../constants/recommendationModes";
 import { useCourse } from "../hooks/useCourse";
 import Icon from "../components/Icon";
+import MapView from "../components/MapView";
 import {
   HISTORY_SAVE_FAILED_MESSAGE,
   saveHistoryQuietly,
@@ -54,11 +57,15 @@ function HomePage() {
     setRouteMode,
     conditions,
     setConditions,
+    currentCourse,
     setCurrentCourse,
     routeLocation,
     setRouteLocation,
     destinationLocation,
     setDestinationLocation,
+    detourLevel,
+    setDetourLevel,
+    swapRouteEndpoints,
     setRecommendationMeta,
   } = useCourse();
   const postcodeLayerRef = useRef(null);
@@ -95,6 +102,14 @@ function HomePage() {
     destinationLocation.latitude !== null &&
     destinationLocation.longitude !== null;
   const isPointToPoint = routeMode === ROUTE_MODES.POINT_TO_POINT;
+  const distanceOptions = getDistanceOptionsByType(conditions.type);
+  const routeCoordinates = currentCourse?.geometry?.coordinates;
+  const mapLat = routeLocation.latitude ?? currentCourse?.start_lat;
+  const mapLng = routeLocation.longitude ?? currentCourse?.start_lng;
+  const mapTitle =
+    routeLocation.address ||
+    currentCourse?.title ||
+    "출발지를 선택하면 지도에 표시됩니다.";
   const canRecommend =
     allSelected && hasLocation && (!isPointToPoint || hasDestination);
 
@@ -139,6 +154,28 @@ function HomePage() {
         return { ...prev, time: value, isCustomTime: false };
       }
 
+      if (key === "type") {
+        const nextDistanceOptions = getDistanceOptionsByType(value).filter(
+          (option) => option.value !== "custom",
+        );
+        const hasCurrentDistance = nextDistanceOptions.some(
+          (option) => option.value === prev.distance,
+        );
+
+        return {
+          ...prev,
+          type: value,
+          distance:
+            prev.targetMode === TARGET_MODES.DISTANCE && !hasCurrentDistance
+              ? nextDistanceOptions[0]?.value || prev.distance
+              : prev.distance,
+          isCustomDistance:
+            prev.targetMode === TARGET_MODES.DISTANCE && !hasCurrentDistance
+              ? false
+              : prev.isCustomDistance,
+        };
+      }
+
       return { ...prev, [key]: value };
     });
   }
@@ -164,6 +201,15 @@ function HomePage() {
     setPostcodeMessage("");
   }
 
+  function handleSwapRouteEndpoints() {
+    if (!hasLocation && !hasDestination) return;
+
+    clearMessages();
+    setPostcodeMessage("");
+    setIsPostcodeOpen(false);
+    swapRouteEndpoints();
+  }
+
   function handleReset() {
     clearMessages();
     setConditions({
@@ -177,6 +223,7 @@ function HomePage() {
     setRouteMode(ROUTE_MODES.ROUND_TRIP);
     setRouteLocation(getEmptyLocation());
     setDestinationLocation(getEmptyLocation());
+    setDetourLevel(DETOUR_LEVELS.MEDIUM);
     setPostcodeMessage("");
     setIsPostcodeOpen(false);
     setRecommendationMeta(null);
@@ -192,6 +239,7 @@ function HomePage() {
       targetMinutes: isDistanceTarget ? null : conditions.time,
       estimatedMinutes,
       seed,
+      detourLevel,
     };
   }
 
@@ -371,7 +419,7 @@ function HomePage() {
   }
 
   return (
-    <div className="page home-page">
+    <div className="page home-page home-map-first">
       <header className="home-header">
         <span className="header-icon-static" aria-hidden="true">
           <Icon name="menu" size={28} />
@@ -386,6 +434,34 @@ function HomePage() {
       </header>
 
       <h1 className="home-title">오늘은 어디로 걸어볼까요?</h1>
+
+      <div className="home-map-layout">
+        <section className="home-map-panel" aria-label="코스 지도">
+          <MapView
+            lat={mapLat}
+            lng={mapLng}
+            title={mapTitle}
+            routeCoordinates={routeCoordinates}
+            routeMode={currentCourse?.routeMode || routeMode}
+          />
+          <div className="home-map-status">
+            <span className="home-map-status-label">지도 기준</span>
+            <span className="home-map-status-value">
+              {hasLocation
+                ? routeLocation.address
+                : "출발지를 선택하면 이곳에 기준 위치가 표시됩니다."}
+            </span>
+          </div>
+        </section>
+
+        <div className="home-control-panel" aria-label="코스 조건 설정">
+          <div className="home-bottom-sheet-handle" aria-hidden="true" />
+          <div className="home-control-heading">
+            <span className="home-control-title">오늘의 랜덤 코스</span>
+            <span className="home-control-subtitle">
+              지도를 보면서 조건을 조절해 주세요.
+            </span>
+          </div>
 
       <section className="condition-section">
         <h2 className="condition-title">
@@ -498,10 +574,21 @@ function HomePage() {
 
       {isPointToPoint && (
         <section className="condition-section address-section">
-          <h2 className="condition-title">
-            <Icon name="pin" size={28} className="icon-green" />
-            도착지
-          </h2>
+          <div className="condition-title-row">
+            <h2 className="condition-title">
+              <Icon name="pin" size={28} className="icon-green" />
+              도착지
+            </h2>
+            <button
+              className="btn-swap-endpoints"
+              type="button"
+              onClick={handleSwapRouteEndpoints}
+              disabled={!hasLocation && !hasDestination}
+            >
+              <Icon name="back" size={20} />
+              출발/도착 바꾸기
+            </button>
+          </div>
           <div className="address-action-row single-action">
             <button
               className="btn-postcode"
@@ -561,6 +648,32 @@ function HomePage() {
         </section>
       )}
 
+      {isPointToPoint && (
+        <section className="condition-section">
+          <h2 className="condition-title">
+            <Icon name="runner" size={28} className="icon-green" />
+            우회 강도
+          </h2>
+          <div className="recommendation-mode-group detour-level-group">
+            {DETOUR_LEVEL_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                className={`recommendation-mode compact detour-level-option${
+                  detourLevel === opt.value ? " selected" : ""
+                }`}
+                type="button"
+                onClick={() => setDetourLevel(opt.value)}
+              >
+                <span className="recommendation-mode-label">{opt.label}</span>
+                <span className="recommendation-mode-desc">
+                  {opt.description}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="condition-section">
         <h2 className="condition-title">
           <Icon name="pin" size={28} className="icon-green" />
@@ -613,7 +726,7 @@ function HomePage() {
         {isDistanceTarget ? (
           <>
             <div className="chip-group target-chip-group">
-              {DISTANCE_OPTIONS.map((opt) => {
+              {distanceOptions.map((opt) => {
                 const isSelected =
                   opt.value === "custom"
                     ? conditions.isCustomDistance
@@ -741,6 +854,8 @@ function HomePage() {
       <button className="btn-reset" onClick={handleReset}>
         초기화
       </button>
+        </div>
+      </div>
     </div>
   );
 }

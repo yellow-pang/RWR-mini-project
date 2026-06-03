@@ -79,6 +79,7 @@ export async function createAddressPointToPointRoute({
   targetDistanceKm,
   targetMinutes,
   estimatedMinutes,
+  detourLevel,
   seed,
 }) {
   const body = {
@@ -91,6 +92,7 @@ export async function createAddressPointToPointRoute({
     targetDistanceKm,
     targetMinutes,
     estimatedMinutes,
+    detourLevel,
     seed,
   };
 

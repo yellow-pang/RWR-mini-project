@@ -11,6 +11,32 @@ const ACTIVITY_SPEEDS_KM_PER_HOUR = {
 };
 const CANDIDATE_LIMIT = 5;
 const METERS_PER_LATITUDE_DEGREE = 111320;
+const DETOUR_LEVELS = {
+  LIGHT: "light",
+  MEDIUM: "medium",
+  STRONG: "strong",
+};
+const DETOUR_SETTINGS = {
+  [DETOUR_LEVELS.LIGHT]: {
+    waypointDelta: -1,
+    minWaypointCount: 0,
+    offsetMultiplier: 0.65,
+  },
+  [DETOUR_LEVELS.MEDIUM]: {
+    waypointDelta: 0,
+    minWaypointCount: 1,
+    offsetMultiplier: 1,
+  },
+  [DETOUR_LEVELS.STRONG]: {
+    waypointDelta: 1,
+    minWaypointCount: 1,
+    offsetMultiplier: 1.35,
+  },
+};
+
+function normalizeDetourLevel(detourLevel) {
+  return DETOUR_SETTINGS[detourLevel] ? detourLevel : DETOUR_LEVELS.MEDIUM;
+}
 
 function roundTo(value, digits = 1) {
   const multiplier = 10 ** digits;
@@ -225,23 +251,47 @@ function getDistanceInMeters(pointA, pointB) {
   );
 }
 
-function getWaypointCount(distance, shouldMinimizeDetour) {
-  if (shouldMinimizeDetour) return 0;
+function getBaseWaypointCount(distance) {
   if (distance >= 5) return 3;
   if (distance >= 3) return 2;
   return 1;
 }
 
-function createRandomWaypoints({ start, end, distance, seed, attempt }) {
+function getWaypointCount(distance, shouldMinimizeDetour, detourLevel) {
+  if (shouldMinimizeDetour) return 0;
+  const settings = DETOUR_SETTINGS[detourLevel];
+  const baseWaypointCount = getBaseWaypointCount(distance);
+
+  return Math.max(
+    settings.minWaypointCount,
+    Math.min(4, baseWaypointCount + settings.waypointDelta),
+  );
+}
+
+function createRandomWaypoints({
+  start,
+  end,
+  distance,
+  seed,
+  attempt,
+  detourLevel,
+}) {
+  const resolvedDetourLevel = normalizeDetourLevel(detourLevel);
+  const detourSettings = DETOUR_SETTINGS[resolvedDetourLevel];
   const baseDistanceMeters = getDistanceInMeters(start, end);
   const targetLengthMeters = distance * 1000;
   const shouldMinimizeDetour = baseDistanceMeters * 1.25 >= targetLengthMeters;
-  const waypointCount = getWaypointCount(distance, shouldMinimizeDetour);
+  const waypointCount = getWaypointCount(
+    distance,
+    shouldMinimizeDetour,
+    resolvedDetourLevel,
+  );
 
   if (waypointCount === 0) {
     return {
       waypoints: [],
       shouldMinimizeDetour,
+      detourLevel: resolvedDetourLevel,
     };
   }
 
@@ -261,7 +311,9 @@ function createRandomWaypoints({ start, end, distance, seed, attempt }) {
     250,
     targetLengthMeters - baseDistanceMeters,
   );
-  const offsetMeters = Math.min(900, Math.max(180, remainingMeters / 3));
+  const offsetMeters =
+    Math.min(1100, Math.max(160, remainingMeters / 3)) *
+    detourSettings.offsetMultiplier;
   const latOffsetUnit = offsetMeters / METERS_PER_LATITUDE_DEGREE;
   const lngOffsetUnit =
     offsetMeters /
@@ -270,6 +322,7 @@ function createRandomWaypoints({ start, end, distance, seed, attempt }) {
 
   return {
     shouldMinimizeDetour,
+    detourLevel: resolvedDetourLevel,
     waypoints: Array.from({ length: waypointCount }, (_, index) => {
       const ratio = (index + 1) / (waypointCount + 1);
       const direction = index % 2 === 0 ? 1 : -1;
@@ -410,6 +463,7 @@ exports.createPointToPoint = async ({
   targetDistanceKm,
   targetMinutes,
   estimatedMinutes,
+  detourLevel = DETOUR_LEVELS.MEDIUM,
   seed,
 }) => {
   const apiKey = process.env.ORS_API_KEY;
@@ -440,6 +494,7 @@ exports.createPointToPoint = async ({
     latitude: Number(endLatitude),
     longitude: Number(endLongitude),
   };
+  const resolvedDetourLevel = normalizeDetourLevel(detourLevel);
   const candidates = [];
   let lastError = null;
 
@@ -479,6 +534,7 @@ exports.createPointToPoint = async ({
       distance: resolvedTargetDistanceKm,
       seed,
       attempt,
+      detourLevel: resolvedDetourLevel,
     });
 
     if (shouldMinimizeDetour && waypoints.length === 0) {
@@ -523,6 +579,7 @@ exports.createPointToPoint = async ({
         retryCount: bestCandidate.attempt,
       }),
       retryCount: bestCandidate.attempt,
+      detourLevel: resolvedDetourLevel,
     };
   }
 

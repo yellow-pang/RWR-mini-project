@@ -36,6 +36,7 @@ function ResultPage() {
     setCurrentCourse,
     routeLocation,
     destinationLocation,
+    detourLevel,
     recommendationMeta,
     setRecommendationMeta,
   } = useCourse();
@@ -67,6 +68,7 @@ function ResultPage() {
       targetDistanceKm,
       targetMinutes: isDistanceTarget ? null : conditions.time,
       estimatedMinutes,
+      detourLevel,
       seed,
     };
   }

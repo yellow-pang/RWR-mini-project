@@ -16,6 +16,27 @@ export const DISTANCE_OPTIONS = [
   { label: "직접 설정", value: "custom" },
 ];
 
+export const DISTANCE_OPTIONS_BY_TYPE = {
+  walk: [
+    { label: "1km", value: 1 },
+    { label: "2km", value: 2 },
+    { label: "3km", value: 3 },
+    { label: "직접 설정", value: "custom" },
+  ],
+  jogging: [
+    { label: "2km", value: 2 },
+    { label: "3km", value: 3 },
+    { label: "5km", value: 5 },
+    { label: "직접 설정", value: "custom" },
+  ],
+  running: [
+    { label: "3km", value: 3 },
+    { label: "5km", value: 5 },
+    { label: "7km", value: 7 },
+    { label: "직접 설정", value: "custom" },
+  ],
+};
+
 export const TIME_OPTIONS = [
   { label: "15분", value: 15 },
   { label: "30분", value: 30 },
@@ -49,3 +70,31 @@ export const CUSTOM_TIME_RANGE = {
   step: 5,
   defaultValue: 45,
 };
+
+export const DETOUR_LEVELS = {
+  LIGHT: "light",
+  MEDIUM: "medium",
+  STRONG: "strong",
+};
+
+export const DETOUR_LEVEL_OPTIONS = [
+  {
+    label: "가볍게",
+    value: DETOUR_LEVELS.LIGHT,
+    description: "도착지에 가까운 짧은 우회",
+  },
+  {
+    label: "적당히",
+    value: DETOUR_LEVELS.MEDIUM,
+    description: "산책하듯 자연스러운 우회",
+  },
+  {
+    label: "많이",
+    value: DETOUR_LEVELS.STRONG,
+    description: "목표 거리 안에서 더 돌아가기",
+  },
+];
+
+export function getDistanceOptionsByType(type) {
+  return DISTANCE_OPTIONS_BY_TYPE[type] || DISTANCE_OPTIONS;
+}
