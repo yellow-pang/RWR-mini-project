@@ -9,11 +9,13 @@ import {
 import {
   CUSTOM_DISTANCE_RANGE,
   CUSTOM_TIME_RANGE,
-  DISTANCE_OPTIONS,
+  DETOUR_LEVEL_OPTIONS,
+  DETOUR_LEVELS,
   TARGET_MODE_OPTIONS,
   TARGET_MODES,
   TIME_OPTIONS,
   TYPE_OPTIONS,
+  getDistanceOptionsByType,
 } from "../constants/courseOptions";
 import {
   calculateEstimatedMinutes,
@@ -33,6 +35,7 @@ import {
 } from "../constants/recommendationModes";
 import { useCourse } from "../hooks/useCourse";
 import Icon from "../components/Icon";
+import MapView from "../components/MapView";
 import {
   HISTORY_SAVE_FAILED_MESSAGE,
   saveHistoryQuietly,
@@ -59,6 +62,9 @@ function HomePage() {
     setRouteLocation,
     destinationLocation,
     setDestinationLocation,
+    detourLevel,
+    setDetourLevel,
+    swapRouteEndpoints,
     setRecommendationMeta,
   } = useCourse();
   const postcodeLayerRef = useRef(null);
@@ -95,6 +101,8 @@ function HomePage() {
     destinationLocation.latitude !== null &&
     destinationLocation.longitude !== null;
   const isPointToPoint = routeMode === ROUTE_MODES.POINT_TO_POINT;
+  const distanceOptions = getDistanceOptionsByType(conditions.type);
+  const mapTitle = routeLocation.address || "선택된 출발 위치";
   const canRecommend =
     allSelected && hasLocation && (!isPointToPoint || hasDestination);
 
@@ -139,6 +147,28 @@ function HomePage() {
         return { ...prev, time: value, isCustomTime: false };
       }
 
+      if (key === "type") {
+        const nextDistanceOptions = getDistanceOptionsByType(value).filter(
+          (option) => option.value !== "custom",
+        );
+        const hasCurrentDistance = nextDistanceOptions.some(
+          (option) => option.value === prev.distance,
+        );
+
+        return {
+          ...prev,
+          type: value,
+          distance:
+            prev.targetMode === TARGET_MODES.DISTANCE && !hasCurrentDistance
+              ? nextDistanceOptions[0]?.value || prev.distance
+              : prev.distance,
+          isCustomDistance:
+            prev.targetMode === TARGET_MODES.DISTANCE && !hasCurrentDistance
+              ? false
+              : prev.isCustomDistance,
+        };
+      }
+
       return { ...prev, [key]: value };
     });
   }
@@ -164,6 +194,15 @@ function HomePage() {
     setPostcodeMessage("");
   }
 
+  function handleSwapRouteEndpoints() {
+    if (!hasLocation && !hasDestination) return;
+
+    clearMessages();
+    setPostcodeMessage("");
+    setIsPostcodeOpen(false);
+    swapRouteEndpoints();
+  }
+
   function handleReset() {
     clearMessages();
     setConditions({
@@ -177,6 +216,7 @@ function HomePage() {
     setRouteMode(ROUTE_MODES.ROUND_TRIP);
     setRouteLocation(getEmptyLocation());
     setDestinationLocation(getEmptyLocation());
+    setDetourLevel(DETOUR_LEVELS.MEDIUM);
     setPostcodeMessage("");
     setIsPostcodeOpen(false);
     setRecommendationMeta(null);
@@ -192,6 +232,7 @@ function HomePage() {
       targetMinutes: isDistanceTarget ? null : conditions.time,
       estimatedMinutes,
       seed,
+      detourLevel,
     };
   }
 
@@ -496,12 +537,41 @@ function HomePage() {
         )}
       </section>
 
-      {isPointToPoint && (
-        <section className="condition-section address-section">
+      {hasLocation && (
+        <section className="condition-section location-preview-section">
           <h2 className="condition-title">
             <Icon name="pin" size={28} className="icon-green" />
-            도착지
+            출발 위치 확인
           </h2>
+          <MapView
+            compact
+            lat={routeLocation.latitude}
+            lng={routeLocation.longitude}
+            title={mapTitle}
+          />
+          <p className="address-search-message">
+            이 위치를 기준으로 코스를 추천합니다.
+          </p>
+        </section>
+      )}
+
+      {isPointToPoint && (
+        <section className="condition-section address-section">
+          <div className="condition-title-row">
+            <h2 className="condition-title">
+              <Icon name="pin" size={28} className="icon-green" />
+              도착지
+            </h2>
+            <button
+              className="btn-swap-endpoints"
+              type="button"
+              onClick={handleSwapRouteEndpoints}
+              disabled={!hasLocation && !hasDestination}
+            >
+              <Icon name="back" size={20} />
+              출발/도착 바꾸기
+            </button>
+          </div>
           <div className="address-action-row single-action">
             <button
               className="btn-postcode"
@@ -561,6 +631,32 @@ function HomePage() {
         </section>
       )}
 
+      {isPointToPoint && (
+        <section className="condition-section">
+          <h2 className="condition-title">
+            <Icon name="runner" size={28} className="icon-green" />
+            우회 강도
+          </h2>
+          <div className="recommendation-mode-group detour-level-group">
+            {DETOUR_LEVEL_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                className={`recommendation-mode compact detour-level-option${
+                  detourLevel === opt.value ? " selected" : ""
+                }`}
+                type="button"
+                onClick={() => setDetourLevel(opt.value)}
+              >
+                <span className="recommendation-mode-label">{opt.label}</span>
+                <span className="recommendation-mode-desc">
+                  {opt.description}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="condition-section">
         <h2 className="condition-title">
           <Icon name="pin" size={28} className="icon-green" />
@@ -613,7 +709,7 @@ function HomePage() {
         {isDistanceTarget ? (
           <>
             <div className="chip-group target-chip-group">
-              {DISTANCE_OPTIONS.map((opt) => {
+              {distanceOptions.map((opt) => {
                 const isSelected =
                   opt.value === "custom"
                     ? conditions.isCustomDistance

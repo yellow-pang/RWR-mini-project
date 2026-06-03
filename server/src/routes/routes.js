@@ -220,6 +220,10 @@ router.post(
       .isInt({ min: 5, max: 120 })
       .withMessage("targetMinutes는 5~120 사이의 정수여야 합니다.")
       .toInt(),
+    body("detourLevel")
+      .optional()
+      .isIn(["light", "medium", "strong"])
+      .withMessage("detourLevel은 light, medium, strong 중 하나여야 합니다."),
   ],
   routesController.createAddressPointToPoint,
 );

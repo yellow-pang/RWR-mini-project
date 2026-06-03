@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CourseContext } from "./courseContext";
 import { ROUTE_MODES } from "../constants/recommendationModes";
-import { TARGET_MODES } from "../constants/courseOptions";
+import { DETOUR_LEVELS, TARGET_MODES } from "../constants/courseOptions";
 
 const EMPTY_ROUTE_LOCATION = {
   address: "",
@@ -24,7 +24,14 @@ export function CourseProvider({ children }) {
   const [routeLocation, setRouteLocation] = useState(EMPTY_ROUTE_LOCATION);
   const [destinationLocation, setDestinationLocation] =
     useState(EMPTY_ROUTE_LOCATION);
+  const [detourLevel, setDetourLevel] = useState(DETOUR_LEVELS.MEDIUM);
   const [recommendationMeta, setRecommendationMeta] = useState(null);
+
+  function swapRouteEndpoints() {
+    setRouteLocation(destinationLocation);
+    setDestinationLocation(routeLocation);
+    setRecommendationMeta(null);
+  }
 
   return (
     <CourseContext.Provider
@@ -39,6 +46,9 @@ export function CourseProvider({ children }) {
         setRouteLocation,
         destinationLocation,
         setDestinationLocation,
+        detourLevel,
+        setDetourLevel,
+        swapRouteEndpoints,
         recommendationMeta,
         setRecommendationMeta,
       }}

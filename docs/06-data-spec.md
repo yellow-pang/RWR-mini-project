@@ -94,6 +94,32 @@ Step 27에서는 생성형 ORS 코스 요청에 추천 기준과 계산 목표�
 
 생성형 코스 목표 검증에 실패하면 저장 DB 코스를 fallback으로 반환하지 않는다. 이는 사용자가 선택한 주소와 목표 조건에 맞지 않는 저장 코스를 보여주는 혼동을 막기 위한 정책이다.
 
+### 2026.06.03 지도 중심 조건 조작 데이터 보정 기록
+
+Step 28에서는 출발-도착 생성형 코스 요청에 `detourLevel` 필드를 추가한다. 이 필드는 PostgreSQL에 저장하지 않고, 요청 단위로만 사용한다.
+
+| 필드 | 타입 | 설명 |
+| ---- | ---- | ---- |
+| `detourLevel` | string | 출발-도착 코스 우회 강도. `light`, `medium`, `strong` 중 하나 |
+
+`detourLevel`은 `POST /routes/address-point-to-point` 요청에서만 사용한다. 순환 코스는 ORS round trip 방식으로 생성하므로 이번 Step에서는 우회 강도를 전달하지 않는다.
+
+서버는 `detourLevel` 값에 따라 랜덤 경유지 수와 경유지 offset을 조정한다. 다만 최종 추천 여부는 Step 27과 동일하게 ORS 실제 `summary.distance` 기반 목표 거리 검증으로 판단한다. 따라서 `strong`을 선택해도 목표 허용 범위를 벗어나는 후보는 추천하지 않는다.
+
+응답 `meta`에는 실제 적용된 우회 강도를 확인할 수 있도록 `detourLevel`을 포함한다.
+
+```json
+{
+  "success": true,
+  "data": {},
+  "meta": {
+    "usedFallback": false,
+    "detourLevel": "medium",
+    "notice": "목표 거리와 가까운 출발-도착 코스를 찾았습니다."
+  }
+}
+```
+
 ### DB 테이블 관계 (ERD)
 
 ```mermaid
