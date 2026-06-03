@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFriendlyErrorMessage } from "../api/client";
-import { createAddressRoundTripRoute } from "../api/routes";
+import {
+  createAddressPointToPointRoute,
+  createAddressRoundTripRoute,
+} from "../api/routes";
 import CourseCard from "../components/CourseCard";
 import Icon from "../components/Icon";
+import { ROUTE_MODES } from "../constants/recommendationModes";
 import { useCourse } from "../hooks/useCourse";
 import { useFavoriteStatus } from "../hooks/useFavoriteStatus";
 import { getTypeIconName, getTypeLabel } from "../utils/courseDisplay";
@@ -15,10 +19,12 @@ import {
 function ResultPage() {
   const navigate = useNavigate();
   const {
+    routeMode,
     conditions,
     currentCourse,
     setCurrentCourse,
     routeLocation,
+    destinationLocation,
     recommendationMeta,
     setRecommendationMeta,
   } = useCourse();
@@ -28,6 +34,7 @@ function ResultPage() {
 
   const course = currentCourse;
   const isGeneratedRoute = course?.source === "ors";
+  const isPointToPoint = routeMode === ROUTE_MODES.POINT_TO_POINT;
   const favorite = useFavoriteStatus(isGeneratedRoute ? null : course?.id);
 
   async function handleRecommendAgain() {
@@ -38,14 +45,26 @@ function ResultPage() {
       setRetryMessage("");
       setHistoryNotice("");
 
-      const response = await createAddressRoundTripRoute({
-        ...conditions,
-        address: routeLocation.address,
-        latitude: routeLocation.latitude,
-        longitude: routeLocation.longitude,
-        seed: Date.now(),
-        exclude: isGeneratedRoute ? undefined : course?.id,
-      });
+      const seed = Date.now();
+      const response = isPointToPoint
+        ? await createAddressPointToPointRoute({
+            ...conditions,
+            startAddress: routeLocation.address,
+            startLatitude: routeLocation.latitude,
+            startLongitude: routeLocation.longitude,
+            endAddress: destinationLocation.address,
+            endLatitude: destinationLocation.latitude,
+            endLongitude: destinationLocation.longitude,
+            seed,
+          })
+        : await createAddressRoundTripRoute({
+            ...conditions,
+            address: routeLocation.address,
+            latitude: routeLocation.latitude,
+            longitude: routeLocation.longitude,
+            seed,
+            exclude: isGeneratedRoute ? undefined : course?.id,
+          });
 
       setCurrentCourse(response.data);
       setRecommendationMeta(response.meta || null);

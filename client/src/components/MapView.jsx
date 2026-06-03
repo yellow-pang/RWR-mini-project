@@ -198,7 +198,14 @@ function toKakaoLatLng(kakao, point) {
  * - compact=true: ResultPage 카드용 축소 모드 (레벨 4, 인포윈도우 없음)
  * - compact=false: DetailPage용 전체 모드 (레벨 3, 코스명 인포윈도우)
  */
-function MapView({ lat, lng, title, routeCoordinates, compact = false }) {
+function MapView({
+  lat,
+  lng,
+  title,
+  routeCoordinates,
+  routeMode,
+  compact = false,
+}) {
   const containerRef = useRef(null);
   const hasRoute =
     Array.isArray(routeCoordinates) && routeCoordinates.length > 1;
@@ -291,6 +298,7 @@ function MapView({ lat, lng, title, routeCoordinates, compact = false }) {
         const startPoint = routePoints[0];
         const finishPoint = routePoints[routePoints.length - 1];
         const isRoundTripEndpoint =
+          routeMode !== "pointToPoint" &&
           getDistanceInMeters(startPoint, finishPoint) <= 40;
         const endpointOverlays = [
           {
@@ -380,6 +388,7 @@ function MapView({ lat, lng, title, routeCoordinates, compact = false }) {
     hasCoords,
     hasRoute,
     routeCoordinates,
+    routeMode,
     sdkFailed,
   ]);
 
