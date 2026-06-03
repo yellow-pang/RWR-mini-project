@@ -23,6 +23,7 @@ function CourseCard({
   const isGeneratedRoute = course.source === "ors";
   const hasFavoriteAction = Boolean(onFavoriteToggle && !isGeneratedRoute);
   const targetSummary = course.targetSummary;
+  const poiSummary = course.poiSummary;
 
   function handleDetail() {
     navigate(`/courses/${courseId}`, { state: { course } });
@@ -103,6 +104,23 @@ function CourseCard({
             추천 이유
           </span>
           <p className="course-reason-text">{course.reason}</p>
+        </div>
+      )}
+
+      {poiSummary && (
+        <div className="course-reason-box poi-reason-box">
+          <span className="course-reason-label">
+            <Icon name="info" size={22} />
+            코스 분위기
+          </span>
+          <p className="course-reason-text">
+            {poiSummary.usedPoi && poiSummary.poiNames?.length
+              ? `${poiSummary.themeLabel} 분위기에 맞춰 ${poiSummary.poiNames
+                  .slice(0, 2)
+                  .join(", ")} 근처를 지나는 후보를 참고했습니다.`
+              : poiSummary.fallbackReason ||
+                "주변 장소 후보가 부족해 기존 랜덤 경유지 방식으로 추천했습니다."}
+          </p>
         </div>
       )}
 

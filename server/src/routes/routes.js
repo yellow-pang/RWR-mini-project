@@ -1,6 +1,7 @@
 const { Router } = require("express");
 const { body } = require("express-validator");
 const { COURSE_TYPES } = require("../constants/courseValues");
+const { ROUTE_THEME_VALUES } = require("../constants/poiCategories");
 const routesController = require("../controllers/routesController");
 
 const router = Router();
@@ -51,6 +52,10 @@ router.post(
       .isInt({ min: 5, max: 120 })
       .withMessage("targetMinutes는 5~120 사이의 정수여야 합니다.")
       .toInt(),
+    body("routeTheme")
+      .optional()
+      .isIn(ROUTE_THEME_VALUES)
+      .withMessage("routeTheme 값이 올바르지 않습니다."),
   ],
   routesController.createRoundTrip,
 );
@@ -119,6 +124,10 @@ router.post(
       .isInt({ min: 5, max: 120 })
       .withMessage("targetMinutes는 5~120 사이의 정수여야 합니다.")
       .toInt(),
+    body("routeTheme")
+      .optional()
+      .isIn(ROUTE_THEME_VALUES)
+      .withMessage("routeTheme 값이 올바르지 않습니다."),
     body("exclude")
       .optional({ values: "falsy" })
       .trim()
@@ -220,6 +229,10 @@ router.post(
       .isInt({ min: 5, max: 120 })
       .withMessage("targetMinutes는 5~120 사이의 정수여야 합니다.")
       .toInt(),
+    body("routeTheme")
+      .optional()
+      .isIn(ROUTE_THEME_VALUES)
+      .withMessage("routeTheme 값이 올바르지 않습니다."),
     body("detourLevel")
       .optional()
       .isIn(["light", "medium", "strong"])

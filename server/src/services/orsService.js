@@ -1,4 +1,9 @@
 const ORS_BASE_URL = "https://api.openrouteservice.org/v2/directions";
+const poiService = require("./poiService");
+const {
+  ROUTE_THEME_LABELS,
+  normalizeRouteTheme,
+} = require("../constants/poiCategories");
 const ORS_PROFILE_BY_TYPE = {
   walk: "foot-walking",
   jogging: "foot-walking",
@@ -107,6 +112,27 @@ function buildTargetSummary({
   };
 }
 
+function buildPoiSummary({
+  routeTheme,
+  pois = [],
+  usedPoi = false,
+  poiFallback = false,
+  fallbackReason,
+}) {
+  const theme = normalizeRouteTheme(routeTheme);
+  const selectedPois = pois.slice(0, 3);
+
+  return {
+    routeTheme: theme,
+    themeLabel: ROUTE_THEME_LABELS[theme],
+    usedPoi,
+    poiFallback,
+    fallbackReason,
+    poiNames: selectedPois.map((poi) => poi.name).filter(Boolean),
+    poiCategories: selectedPois.map((poi) => poi.category).filter(Boolean),
+  };
+}
+
 function isRouteWithinTarget(route, targetDistanceKm) {
   const actualDistanceMeters =
     route.features?.[0]?.properties?.summary?.distance;
@@ -127,13 +153,24 @@ function getRouteDistanceDelta(route, targetDistanceKm) {
   return Math.abs(actualDistanceMeters / 1000 - targetDistanceKm);
 }
 
-function pickBestCandidate(candidates, targetDistanceKm) {
+function pickBestCandidate(candidates, targetDistanceKm, preferPoi = false) {
   return candidates
     .filter((candidate) => isRouteWithinTarget(candidate.payload, targetDistanceKm))
     .sort(
-      (a, b) =>
-        getRouteDistanceDelta(a.payload, targetDistanceKm) -
-        getRouteDistanceDelta(b.payload, targetDistanceKm),
+      (a, b) => {
+        if (preferPoi) {
+          const poiPriority =
+            Number(Boolean(b.poiSummary?.usedPoi)) -
+            Number(Boolean(a.poiSummary?.usedPoi));
+
+          if (poiPriority !== 0) return poiPriority;
+        }
+
+        return (
+          getRouteDistanceDelta(a.payload, targetDistanceKm) -
+          getRouteDistanceDelta(b.payload, targetDistanceKm)
+        );
+      },
     )[0];
 }
 
@@ -161,6 +198,7 @@ function buildGeneratedCourse({
   estimatedMinutes,
   candidateCount = 1,
   retryCount = 0,
+  poiSummary,
 }) {
   const feature = route.features?.[0];
   const coordinates = feature?.geometry?.coordinates;
@@ -213,12 +251,15 @@ function buildGeneratedCourse({
       duration: summary.duration || null,
     },
     targetSummary,
+    poiSummary,
     description:
       routeMode === "pointToPoint"
         ? `${originLabel}에서 ${destinationLabel}까지 ORS가 실제 도로망을 따라 생성한 산책형 이동 코스입니다.`
         : `${originLabel}을 출발점으로 ORS가 실제 도로망을 따라 생성한 순환 운동 코스입니다.`,
     reason:
-      routeMode === "pointToPoint"
+      poiSummary?.usedPoi
+        ? `${poiSummary.themeLabel} 분위기에 맞춰 주변 장소를 목적지로 고정하지 않고 경유 후보로 참고했습니다.`
+        : routeMode === "pointToPoint"
         ? "출발지와 목적지 사이에 랜덤 경유지를 더해 바로 가는 길보다 여유 있게 걸을 수 있도록 추천합니다."
         : "선택한 거리와 운동 유형을 바탕으로 매일 다른 방향의 코스를 추천합니다.",
     caution:
@@ -377,6 +418,7 @@ exports.createRoundTrip = async ({
   estimatedMinutes,
   seed,
   originLabel,
+  routeTheme = "any",
 }) => {
   const apiKey = process.env.ORS_API_KEY;
 
@@ -401,6 +443,51 @@ exports.createRoundTrip = async ({
   const targetLengthMeters = resolvedTargetDistanceKm * 1000;
   const candidates = [];
   let lastError = null;
+  let poiFallbackReason = "";
+  const resolvedRouteTheme = normalizeRouteTheme(routeTheme);
+
+  try {
+    const poiCandidates = await poiService.searchRouteThemePois({
+      routeTheme: resolvedRouteTheme,
+      points: [{ latitude: Number(latitude), longitude: Number(longitude) }],
+      targetDistanceKm: resolvedTargetDistanceKm,
+    });
+
+    for (
+      let attempt = 0;
+      attempt < Math.min(CANDIDATE_LIMIT, poiCandidates.length);
+      attempt += 1
+    ) {
+      const poi = poiCandidates[attempt];
+
+      try {
+        const payload = await requestOrsRoute({
+          profile,
+          apiKey,
+          coordinates: [
+            [longitude, latitude],
+            [poi.longitude, poi.latitude],
+            [longitude, latitude],
+          ],
+        });
+
+        candidates.push({
+          payload,
+          attempt,
+          poiSummary: buildPoiSummary({
+            routeTheme: resolvedRouteTheme,
+            pois: [poi],
+            usedPoi: true,
+          }),
+        });
+      } catch (error) {
+        lastError = error;
+      }
+    }
+  } catch {
+    poiFallbackReason =
+      "주변 장소 후보를 불러오지 못해 기존 랜덤 방식으로 코스를 생성했습니다.";
+  }
 
   for (let attempt = 0; attempt < CANDIDATE_LIMIT; attempt += 1) {
     try {
@@ -417,13 +504,28 @@ exports.createRoundTrip = async ({
         },
       });
 
-      candidates.push({ payload, attempt });
+      candidates.push({
+        payload,
+        attempt,
+        poiSummary: buildPoiSummary({
+          routeTheme: resolvedRouteTheme,
+          usedPoi: false,
+          poiFallback: true,
+          fallbackReason:
+            poiFallbackReason ||
+            "목표 거리와 맞는 주변 장소 후보가 부족해 기존 랜덤 방식으로 코스를 생성했습니다.",
+        }),
+      });
     } catch (error) {
       lastError = error;
     }
   }
 
-  const bestCandidate = pickBestCandidate(candidates, resolvedTargetDistanceKm);
+  const bestCandidate = pickBestCandidate(
+    candidates,
+    resolvedTargetDistanceKm,
+    resolvedRouteTheme !== "any",
+  );
 
   if (!bestCandidate) {
     if (candidates.length === 0 && lastError) {
@@ -446,6 +548,7 @@ exports.createRoundTrip = async ({
     estimatedMinutes: resolvedEstimatedMinutes,
     candidateCount: candidates.length,
     retryCount: bestCandidate.attempt,
+    poiSummary: bestCandidate.poiSummary,
   });
 };
 
@@ -464,6 +567,7 @@ exports.createPointToPoint = async ({
   targetMinutes,
   estimatedMinutes,
   detourLevel = DETOUR_LEVELS.MEDIUM,
+  routeTheme = "any",
   seed,
 }) => {
   const apiKey = process.env.ORS_API_KEY;
@@ -495,8 +599,11 @@ exports.createPointToPoint = async ({
     longitude: Number(endLongitude),
   };
   const resolvedDetourLevel = normalizeDetourLevel(detourLevel);
+  const resolvedRouteTheme = normalizeRouteTheme(routeTheme);
   const candidates = [];
   let lastError = null;
+  let poiCandidates = [];
+  let poiFallbackReason = "";
 
   try {
     const directPayload = await requestOrsRoute({
@@ -527,6 +634,49 @@ exports.createPointToPoint = async ({
     lastError = error;
   }
 
+  try {
+    poiCandidates = await poiService.searchRouteThemePois({
+      routeTheme: resolvedRouteTheme,
+      points: poiService.getPointToPointSearchCenters({ start, end }),
+      targetDistanceKm: resolvedTargetDistanceKm,
+    });
+  } catch {
+    poiFallbackReason =
+      "주변 장소 후보를 불러오지 못해 기존 랜덤 경유지로 코스를 생성했습니다.";
+  }
+
+  for (
+    let attempt = 0;
+    attempt < Math.min(CANDIDATE_LIMIT, poiCandidates.length);
+    attempt += 1
+  ) {
+    const poi = poiCandidates[attempt];
+
+    try {
+      const payload = await requestOrsRoute({
+        profile,
+        apiKey,
+        coordinates: [
+          [start.longitude, start.latitude],
+          [poi.longitude, poi.latitude],
+          [end.longitude, end.latitude],
+        ],
+      });
+
+      candidates.push({
+        payload,
+        attempt: attempt + 1,
+        poiSummary: buildPoiSummary({
+          routeTheme: resolvedRouteTheme,
+          pois: [poi],
+          usedPoi: true,
+        }),
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
   for (let attempt = 0; attempt < CANDIDATE_LIMIT; attempt += 1) {
     const { waypoints, shouldMinimizeDetour } = createRandomWaypoints({
       start,
@@ -551,13 +701,28 @@ exports.createPointToPoint = async ({
         ]),
       });
 
-      candidates.push({ payload, attempt: attempt + 1 });
+      candidates.push({
+        payload,
+        attempt: attempt + 1,
+        poiSummary: buildPoiSummary({
+          routeTheme: resolvedRouteTheme,
+          usedPoi: false,
+          poiFallback: true,
+          fallbackReason:
+            poiFallbackReason ||
+            "목표 거리와 맞는 주변 장소 후보가 부족해 기존 랜덤 경유지로 코스를 생성했습니다.",
+        }),
+      });
     } catch (error) {
       lastError = error;
     }
   }
 
-  const bestCandidate = pickBestCandidate(candidates, resolvedTargetDistanceKm);
+  const bestCandidate = pickBestCandidate(
+    candidates,
+    resolvedTargetDistanceKm,
+    resolvedRouteTheme !== "any",
+  );
 
   if (bestCandidate) {
     return {
@@ -577,6 +742,7 @@ exports.createPointToPoint = async ({
         estimatedMinutes: resolvedEstimatedMinutes,
         candidateCount: candidates.length,
         retryCount: bestCandidate.attempt,
+        poiSummary: bestCandidate.poiSummary,
       }),
       retryCount: bestCandidate.attempt,
       detourLevel: resolvedDetourLevel,

@@ -11,6 +11,8 @@ import {
   CUSTOM_TIME_RANGE,
   DETOUR_LEVEL_OPTIONS,
   DETOUR_LEVELS,
+  ROUTE_THEME_OPTIONS,
+  ROUTE_THEMES,
   TARGET_MODE_OPTIONS,
   TARGET_MODES,
   TIME_OPTIONS,
@@ -64,6 +66,8 @@ function HomePage() {
     setDestinationLocation,
     detourLevel,
     setDetourLevel,
+    routeTheme,
+    setRouteTheme,
     swapRouteEndpoints,
     setRecommendationMeta,
   } = useCourse();
@@ -217,6 +221,7 @@ function HomePage() {
     setRouteLocation(getEmptyLocation());
     setDestinationLocation(getEmptyLocation());
     setDetourLevel(DETOUR_LEVELS.MEDIUM);
+    setRouteTheme(ROUTE_THEMES.ANY);
     setPostcodeMessage("");
     setIsPostcodeOpen(false);
     setRecommendationMeta(null);
@@ -233,6 +238,7 @@ function HomePage() {
       estimatedMinutes,
       seed,
       detourLevel,
+      routeTheme,
     };
   }
 
@@ -535,6 +541,34 @@ function HomePage() {
             />
           </div>
         )}
+      </section>
+
+      <section className="condition-section">
+        <h2 className="condition-title">
+          <Icon name="star" size={28} className="icon-green" />
+          코스 분위기
+        </h2>
+        <div className="recommendation-mode-group route-theme-group">
+          {ROUTE_THEME_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              className={`recommendation-mode compact route-theme-option${
+                routeTheme === opt.value ? " selected" : ""
+              }`}
+              type="button"
+              onClick={() => setRouteTheme(opt.value)}
+            >
+              <span className="recommendation-mode-label">{opt.label}</span>
+              <span className="recommendation-mode-desc">
+                {opt.description}
+              </span>
+            </button>
+          ))}
+        </div>
+        <p className="address-search-message">
+          선택한 장소를 목적지로 고정하지 않고 코스 분위기를 만드는 힌트로
+          사용합니다.
+        </p>
       </section>
 
       {hasLocation && (

@@ -98,3 +98,39 @@ export const DETOUR_LEVEL_OPTIONS = [
 export function getDistanceOptionsByType(type) {
   return DISTANCE_OPTIONS_BY_TYPE[type] || DISTANCE_OPTIONS;
 }
+
+export const ROUTE_THEMES = {
+  ANY: "any",
+  PARK: "park",
+  TRAIL: "trail",
+  CAFE: "cafe",
+  CONVENIENCE: "convenience",
+};
+
+export const ROUTE_THEME_OPTIONS = [
+  {
+    label: "아무거나",
+    value: ROUTE_THEMES.ANY,
+    description: "랜덤 후보와 주변 장소를 함께 활용",
+  },
+  {
+    label: "공원 위주",
+    value: ROUTE_THEMES.PARK,
+    description: "공원이나 녹지 근처를 지나는 느낌",
+  },
+  {
+    label: "하천/산책로",
+    value: ROUTE_THEMES.TRAIL,
+    description: "걷기 좋은 길 주변을 우선 탐색",
+  },
+  {
+    label: "카페 근처",
+    value: ROUTE_THEMES.CAFE,
+    description: "밝은 상권을 살짝 지나는 느낌",
+  },
+  {
+    label: "편의점 근처",
+    value: ROUTE_THEMES.CONVENIENCE,
+    description: "중간에 물을 살 수 있는 길 느낌",
+  },
+];
