@@ -5,6 +5,7 @@ import {
   fetchFavorites,
   removeFavorite,
 } from "../api/favorites";
+import { isPersistedCourseId } from "../utils/history";
 import { getUserId } from "../utils/userId";
 
 export function useFavoriteStatus(courseId) {
@@ -13,7 +14,7 @@ export function useFavoriteStatus(courseId) {
   const [noticeMessage, setNoticeMessage] = useState("");
 
   useEffect(() => {
-    if (!courseId) return;
+    if (!isPersistedCourseId(courseId)) return;
 
     async function loadFavoriteState() {
       try {
@@ -28,7 +29,7 @@ export function useFavoriteStatus(courseId) {
   }, [courseId]);
 
   async function toggleFavorite() {
-    if (!courseId) return;
+    if (!isPersistedCourseId(courseId)) return;
 
     try {
       setMessage("");

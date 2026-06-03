@@ -45,9 +45,14 @@
 | 수정 | `client/src/api/routes.js`                    | 목표 모드와 계산값 요청 body 추가                      |
 | 수정 | `client/src/components/CourseCard.jsx`        | 목표값, 실제값, 목표 차이 표시                         |
 | 수정 | `client/src/components/CourseCard.css`        | 목표 요약 박스 스타일 추가                             |
+| 수정 | `client/src/hooks/useFavoriteStatus.js`       | 저장 DB 코스 ID가 아닐 때 즐겨찾기 API 호출 방지       |
+| 수정 | `client/src/utils/history.js`                 | 저장 DB 코스 ID 판별과 이력 저장 방어 추가             |
+| 수정 | `client/src/pages/HistoryPage.jsx`            | 저장 DB 코스만 즐겨찾기 토글 가능하도록 방어           |
 | 수정 | `client/src/index.css`                        | 프리셋/직접 설정/예상 정보 UI 스타일 추가              |
 | 수정 | `server/src/routes/routes.js`                 | 생성형 라우트 API 입력 검증 확장                       |
 | 수정 | `server/src/controllers/routesController.js`  | targetSummary 응답 메타 추가, 저장 DB fallback 제거    |
+| 수정 | `server/src/controllers/historyController.js` | 존재하지 않는 코스 이력 저장 시 404 응답 처리          |
+| 수정 | `server/src/controllers/favoritesController.js` | 존재하지 않는 코스 즐겨찾기 저장 시 404 응답 처리    |
 | 수정 | `server/src/services/orsService.js`           | 후보 생성, 실제 거리 검증, 최적 후보 선택 추가         |
 | 수정 | `docs/03-requirements.md`                     | Step 27 요구사항 보정 기록 추가                        |
 | 수정 | `docs/06-data-spec.md`                        | Step 27 데이터 보정 기록 추가                          |
@@ -75,6 +80,8 @@
 node --check server/src/services/orsService.js
 node --check server/src/controllers/routesController.js
 node --check server/src/routes/routes.js
+node --check server/src/controllers/historyController.js
+node --check server/src/controllers/favoritesController.js
 npm.cmd --prefix client run lint
 npm.cmd --prefix client run build
 ```

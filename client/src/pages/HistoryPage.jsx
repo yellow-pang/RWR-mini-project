@@ -6,6 +6,7 @@ import CourseCard from "../components/CourseCard";
 import EmptyState from "../components/EmptyState";
 import Icon from "../components/Icon";
 import { getUserId } from "../utils/userId";
+import { isPersistedCourseId } from "../utils/history";
 
 function formatDate(value) {
   if (!value) return "";
@@ -51,6 +52,11 @@ function HistoryPage() {
   }, []);
 
   async function handleFavoriteToggle(courseId) {
+    if (!isPersistedCourseId(courseId)) {
+      setMessage("저장된 코스만 즐겨찾기에 추가할 수 있습니다.");
+      return;
+    }
+
     try {
       setMessage("");
       setNoticeMessage("");

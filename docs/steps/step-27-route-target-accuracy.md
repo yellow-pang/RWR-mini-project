@@ -127,9 +127,14 @@ targetDistanceKm = speedKmPerHour * (targetMinutes / 60);
 | 수정 | `client/src/api/routes.js`                    | 목표 모드와 계산값을 요청 body에 포함                                       |
 | 수정 | `client/src/components/CourseCard.jsx`        | 목표값, 실제값, 차이 표시                                                   |
 | 수정 | `client/src/components/CourseCard.css`        | 목표 요약 박스 스타일 추가                                                  |
+| 수정 | `client/src/hooks/useFavoriteStatus.js`       | 저장 DB 코스 ID가 아닐 때 즐겨찾기 API 호출 방지                            |
+| 수정 | `client/src/utils/history.js`                 | 저장 DB 코스 ID 판별 함수와 이력 저장 방어 추가                             |
+| 수정 | `client/src/pages/HistoryPage.jsx`            | 저장 DB 코스만 즐겨찾기 토글 가능하도록 방어                                |
 | 수정 | `client/src/index.css`                        | 프리셋 칩, 추천 기준, 직접 설정 슬라이더, 예상 정보 스타일 추가             |
 | 수정 | `server/src/routes/routes.js`                 | 생성형 경로 API의 거리/시간/목표값 검증 범위 확장                           |
 | 수정 | `server/src/controllers/routesController.js`  | 저장 DB fallback 제거, targetSummary 메타 응답 추가                         |
+| 수정 | `server/src/controllers/historyController.js` | 존재하지 않는 코스 이력 저장 시 404 응답 처리                               |
+| 수정 | `server/src/controllers/favoritesController.js` | 존재하지 않는 코스 즐겨찾기 저장 시 404 응답 처리                         |
 | 수정 | `server/src/services/orsService.js`           | ORS 후보 생성, 목표 거리 검증, 최적 후보 선택 로직 추가                     |
 | 수정 | `docs/03-requirements.md`                     | Step 27 요구사항 보정 기록 추가                                             |
 | 수정 | `docs/06-data-spec.md`                        | Step 27 데이터 보정 기록 추가                                               |
@@ -159,6 +164,8 @@ targetDistanceKm = speedKmPerHour * (targetMinutes / 60);
 | `node --check server/src/services/orsService.js`          | 통과 |
 | `node --check server/src/controllers/routesController.js` | 통과 |
 | `node --check server/src/routes/routes.js`                | 통과 |
+| `node --check server/src/controllers/historyController.js` | 통과 |
+| `node --check server/src/controllers/favoritesController.js` | 통과 |
 | `npm.cmd --prefix client run lint`                        | 통과 |
 | `npm.cmd --prefix client run build`                       | 통과 |
 
