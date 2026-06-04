@@ -6,10 +6,15 @@ const {
   normalizePoiPreferences,
   normalizeRouteTheme,
 } = require("../constants/poiCategories");
+const fetchWithTimeout = require("../utils/fetchWithTimeout");
+const { createCacheKey, createTtlCache } = require("../utils/ttlCache");
 
 const KAKAO_LOCAL_BASE_URL = "https://dapi.kakao.com/v2/local";
 const DEFAULT_RESULT_SIZE = 5;
 const MAX_POI_CANDIDATES = 10;
+const KAKAO_POI_TIMEOUT_MS = 5000;
+const POI_CACHE_TTL_MS = 30 * 1000;
+const poiCache = createTtlCache({ ttlMs: POI_CACHE_TTL_MS });
 
 function getKakaoApiKey() {
   const apiKey = process.env.KAKAO_REST_API_KEY;
@@ -39,11 +44,19 @@ async function requestKakaoLocalSearch(path, params) {
     }
   });
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `KakaoAK ${getKakaoApiKey()}`,
+  const response = await fetchWithTimeout(
+    url,
+    {
+      headers: {
+        Authorization: `KakaoAK ${getKakaoApiKey()}`,
+      },
     },
-  });
+    {
+      timeoutMs: KAKAO_POI_TIMEOUT_MS,
+      timeoutMessage:
+        "주변 장소 검색 서비스 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.",
+    },
+  );
 
   const payload = await response.json().catch(() => null);
 
@@ -130,7 +143,6 @@ exports.searchRouteThemePois = async function searchRouteThemePois({
   const preferences = normalizePoiPreferences(poiPreferences, theme);
   const legacyKeywords = ROUTE_THEME_KEYWORDS[theme] || ROUTE_THEME_KEYWORDS.any;
   const radius = getSearchRadiusMeters(targetDistanceKm);
-  const searches = [];
 
   async function searchPreferenceAtPoint({ preference, point, centerIndex }) {
     const strategy = POI_SEARCH_STRATEGIES[preference];
@@ -198,54 +210,65 @@ exports.searchRouteThemePois = async function searchRouteThemePois({
       .filter(Boolean);
   }
 
-  points.forEach((point, centerIndex) => {
-    if (
-      !Number.isFinite(Number(point.latitude)) ||
-      !Number.isFinite(Number(point.longitude))
-    ) {
-      return;
-    }
-
-    if (preferences.length > 0) {
-      preferences.forEach((preference) => {
-        searches.push(searchPreferenceAtPoint({ preference, point, centerIndex }));
-      });
-      return;
-    }
-
-    legacyKeywords.forEach((keyword) => {
-      searches.push(
-        requestKakaoKeywordSearch({
-          query: keyword,
-          x: point.longitude,
-          y: point.latitude,
-          radius,
-          size: DEFAULT_RESULT_SIZE,
-          sort: "distance",
-        }).then((payload) =>
-          (payload.documents || [])
-            .map((document, index) =>
-              mapPoiDocument(document, {
-                theme,
-                label: keyword,
-                category: keyword,
-                centerIndex,
-                index,
-                matchSource: "keyword",
-              }),
-            )
-            .filter(Boolean),
-        ),
-      );
-    });
+  const cacheKey = createCacheKey("poi-search", {
+    routeTheme: theme,
+    preferences,
+    points,
+    targetDistanceKm,
   });
 
-  const results = await Promise.allSettled(searches);
-  const pois = results
-    .filter((result) => result.status === "fulfilled")
-    .flatMap((result) => result.value);
+  return poiCache.getOrSet(cacheKey, async () => {
+    const searches = [];
 
-  return dedupePois(pois).slice(0, MAX_POI_CANDIDATES);
+    points.forEach((point, centerIndex) => {
+      if (
+        !Number.isFinite(Number(point.latitude)) ||
+        !Number.isFinite(Number(point.longitude))
+      ) {
+        return;
+      }
+
+      if (preferences.length > 0) {
+        preferences.forEach((preference) => {
+          searches.push(searchPreferenceAtPoint({ preference, point, centerIndex }));
+        });
+        return;
+      }
+
+      legacyKeywords.forEach((keyword) => {
+        searches.push(
+          requestKakaoKeywordSearch({
+            query: keyword,
+            x: point.longitude,
+            y: point.latitude,
+            radius,
+            size: DEFAULT_RESULT_SIZE,
+            sort: "distance",
+          }).then((payload) =>
+            (payload.documents || [])
+              .map((document, index) =>
+                mapPoiDocument(document, {
+                  theme,
+                  label: keyword,
+                  category: keyword,
+                  centerIndex,
+                  index,
+                  matchSource: "keyword",
+                }),
+              )
+              .filter(Boolean),
+          ),
+        );
+      });
+    });
+
+    const results = await Promise.allSettled(searches);
+    const pois = results
+      .filter((result) => result.status === "fulfilled")
+      .flatMap((result) => result.value);
+
+    return dedupePois(pois).slice(0, MAX_POI_CANDIDATES);
+  });
 };
 
 exports.getPointToPointSearchCenters = function getPointToPointSearchCenters({

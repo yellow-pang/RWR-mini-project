@@ -1,4 +1,10 @@
 const KAKAO_LOCAL_BASE_URL = "https://dapi.kakao.com/v2/local";
+const fetchWithTimeout = require("../utils/fetchWithTimeout");
+const { createCacheKey, createTtlCache } = require("../utils/ttlCache");
+
+const KAKAO_TIMEOUT_MS = 5000;
+const LOCATION_CACHE_TTL_MS = 30 * 1000;
+const locationCache = createTtlCache({ ttlMs: LOCATION_CACHE_TTL_MS });
 
 function getKakaoApiKey() {
   const apiKey = process.env.KAKAO_REST_API_KEY;
@@ -20,11 +26,19 @@ async function requestKakao(path, params) {
     }
   });
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `KakaoAK ${getKakaoApiKey()}`,
+  const response = await fetchWithTimeout(
+    url,
+    {
+      headers: {
+        Authorization: `KakaoAK ${getKakaoApiKey()}`,
+      },
     },
-  });
+    {
+      timeoutMs: KAKAO_TIMEOUT_MS,
+      timeoutMessage:
+        "위치 변환 서비스 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.",
+    },
+  );
 
   const payload = await response.json().catch(() => null);
 
@@ -63,64 +77,79 @@ function mapAddressDocument(result, index) {
 }
 
 exports.geocodeAddress = async (address) => {
-  const payload = await requestKakao("/search/address.json", {
-    query: address,
+  const cacheKey = createCacheKey("geocode", { address });
+
+  return locationCache.getOrSet(cacheKey, async () => {
+    const payload = await requestKakao("/search/address.json", {
+      query: address,
+    });
+    const result = payload.documents?.[0];
+
+    if (!result) {
+      const error = new Error("입력한 주소의 좌표를 찾을 수 없습니다.");
+      error.status = 404;
+      throw error;
+    }
+
+    return {
+      address: result.address_name || address,
+      latitude: Number(result.y),
+      longitude: Number(result.x),
+      source: "kakao-address",
+    };
   });
-  const result = payload.documents?.[0];
-
-  if (!result) {
-    const error = new Error("입력한 주소의 좌표를 찾을 수 없습니다.");
-    error.status = 404;
-    throw error;
-  }
-
-  return {
-    address: result.address_name || address,
-    latitude: Number(result.y),
-    longitude: Number(result.x),
-    source: "kakao-address",
-  };
 };
 
 exports.searchAddresses = async (query) => {
-  const payload = await requestKakao("/search/address.json", {
-    query,
-    size: 10,
-  });
+  const cacheKey = createCacheKey("address-search", { query });
 
-  return (payload.documents || [])
-    .slice(0, 10)
-    .map(mapAddressDocument)
-    .filter(
-      (location) =>
-        location.address &&
-        Number.isFinite(location.latitude) &&
-        Number.isFinite(location.longitude),
-    );
+  return locationCache.getOrSet(cacheKey, async () => {
+    const payload = await requestKakao("/search/address.json", {
+      query,
+      size: 10,
+    });
+
+    return (payload.documents || [])
+      .slice(0, 10)
+      .map(mapAddressDocument)
+      .filter(
+        (location) =>
+          location.address &&
+          Number.isFinite(location.latitude) &&
+          Number.isFinite(location.longitude),
+      );
+  });
 };
 
 exports.reverseGeocode = async ({ latitude, longitude }) => {
-  const payload = await requestKakao("/geo/coord2address.json", {
-    x: longitude,
-    y: latitude,
-  });
-  const result = payload.documents?.[0];
-
-  if (!result) {
-    const error = new Error("현재 위치의 주소를 찾을 수 없습니다.");
-    error.status = 404;
-    throw error;
-  }
-
-  const address =
-    result.road_address?.address_name ||
-    result.address?.address_name ||
-    "현재 위치 기준";
-
-  return {
-    address,
+  const cacheKey = createCacheKey("reverse-geocode", {
     latitude,
     longitude,
-    source: "kakao-coord",
-  };
+  });
+
+  return locationCache.getOrSet(cacheKey, async () => {
+    const payload = await requestKakao("/geo/coord2address.json", {
+      x: longitude,
+      y: latitude,
+    });
+    const result = payload.documents?.[0];
+
+    if (!result) {
+      const error = new Error("현재 위치의 주소를 찾을 수 없습니다.");
+      error.status = 404;
+      throw error;
+    }
+
+    const address =
+      result.road_address?.address_name ||
+      result.address?.address_name ||
+      "현재 위치 기준";
+
+    return {
+      address,
+      latitude,
+      longitude,
+      source: "kakao-coord",
+    };
+  });
 };
