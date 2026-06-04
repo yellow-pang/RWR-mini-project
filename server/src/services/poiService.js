@@ -8,11 +8,11 @@ const {
 } = require("../constants/poiCategories");
 const fetchWithTimeout = require("../utils/fetchWithTimeout");
 const { createCacheKey, createTtlCache } = require("../utils/ttlCache");
+const securityConfig = require("../config/securityConfig");
 
 const KAKAO_LOCAL_BASE_URL = "https://dapi.kakao.com/v2/local";
 const DEFAULT_RESULT_SIZE = 5;
 const MAX_POI_CANDIDATES = 10;
-const KAKAO_POI_TIMEOUT_MS = 5000;
 const POI_CACHE_TTL_MS = 30 * 1000;
 const poiCache = createTtlCache({ ttlMs: POI_CACHE_TTL_MS });
 
@@ -52,7 +52,7 @@ async function requestKakaoLocalSearch(path, params) {
       },
     },
     {
-      timeoutMs: KAKAO_POI_TIMEOUT_MS,
+      timeoutMs: securityConfig.kakaoPoiTimeoutMs,
       timeoutMessage:
         "주변 장소 검색 서비스 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.",
     },

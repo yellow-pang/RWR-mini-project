@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const { rateLimit } = require("express-rate-limit");
+const securityConfig = require("./config/securityConfig");
 
 const app = express();
 
@@ -15,7 +16,7 @@ const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
   .filter(Boolean);
 
 app.use(helmet());
-app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "4kb" }));
+app.use(express.json({ limit: securityConfig.jsonBodyLimit }));
 
 app.use(
   cors({
@@ -53,12 +54,12 @@ const createApiRateLimiter = ({ windowMs, max }) =>
   });
 
 const defaultApiLimiter = createApiRateLimiter({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
+  windowMs: securityConfig.defaultApiRateLimitWindowMs,
+  max: securityConfig.defaultApiRateLimitMax,
 });
 const externalApiLimiter = createApiRateLimiter({
-  windowMs: 5 * 60 * 1000,
-  max: 60,
+  windowMs: securityConfig.externalApiRateLimitWindowMs,
+  max: securityConfig.externalApiRateLimitMax,
 });
 
 const coursesRouter = require("./routes/courses");
