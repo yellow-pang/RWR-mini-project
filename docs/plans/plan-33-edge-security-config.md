@@ -145,12 +145,22 @@ Cloudflare는 코드로 변경하지 않고 문서화한다.
 | Cloudflare Proxy                | 주황색 구름 사용 가능                                                                   |
 | Rate Limiting 대상              | `/api/routes/*`, `/api/locations/*` 우선                                                |
 | Rate Limiting 기준              | rule 1개, Path 조건, IP 기준, `10 requests / 10 seconds`, duration `10 seconds`         |
-| Cloudflare Free Managed Ruleset | Free에서 사용 가능한 Managed Ruleset으로 정리                                           |
+| Cloudflare Free Managed Ruleset | 문서상 Free에서 제공되지만 대시보드 확인 결과 별도 설정하지 않는 것으로 정리            |
 | WAF Custom Rules                | Free에서 가능하지만 이번 Step에서는 필수 적용 대상이 아닌 참고 항목                     |
 | Bot Fight Mode                  | Free에서 가능하지만 전체 도메인 적용이라 API 영향 가능성이 있어 보류                    |
 | Pro 이상 참고                   | Host 조건, 5분 period, 10분 duration, Cloudflare Managed Ruleset, OWASP Core Ruleset 등 |
 
 Cloudflare 설정은 운영 환경 트래픽과 도메인 상태에 따라 달라질 수 있으므로, 이번 Step에서는 "권장값"과 "확인 항목"으로 남긴다.
+
+### 4.5 구현 후 Cloudflare 확인 결과
+
+2026.06.05 기준 사용자 대시보드 확인 결과, Cloudflare Free에서 실제로 적용한 것은 `Rate Limiting Rule 1개`다.
+
+최종 적용한 rule은 `/api/routes/*`, `/api/locations/*`를 대상으로 하는 `RWR generated route and location APIs`이며, 같은 IP에서 `10 requests / 10 seconds`를 넘으면 `Block`한다.
+
+Managed Ruleset은 문서상 Free Managed Ruleset이 제공되지만, 대시보드에서 검색 시 `Account-level web application firewall (WAF)` 구매/add-on 화면으로 연결되었다. 이 화면은 계정 단위 WAF 설정이며 Enterprise 또는 유료 add-on 영역으로 보인다.
+
+따라서 이번 Step에서는 Managed Ruleset을 별도로 구현하거나 설정하지 않는다. Free에서 기본 제공되는 보호가 있다면 그대로 두고, 직접 설정 가능한 작업으로는 추적하지 않는다.
 
 ## 5. 변경 예상 파일
 
@@ -196,7 +206,7 @@ Docker 실행이나 빌드는 사용자 환경과 승인 여부에 따라 생략
 - DB 스키마 변경
 - seed 데이터 변경
 - `server/.env` 실제 파일 수정
-- Cloudflare 대시보드 실제 변경
+- 저장소 코드/API를 통한 Cloudflare 대시보드 자동 변경
 - 새로운 npm 패키지 추가
 - CORS 정책 변경
 - Helmet 세부 정책 변경
