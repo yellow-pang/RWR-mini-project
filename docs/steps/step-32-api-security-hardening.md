@@ -32,6 +32,15 @@ Step 32에서는 RWR 서버가 외부 API와 사용자 입력을 더 안정적�
 
 적용 위치는 `server/src/app.js`다.
 
+운영 Docker 구조에서는 Nginx가 `/api` 요청을 Express 서버로 프록시한다. Nginx가 넘기는 `X-Forwarded-For` 값을 Express가 1단계 프록시 기준으로 신뢰하도록 `app.set("trust proxy", 1)`도 함께 적용했다. 이렇게 해야 rate limit이 Nginx 컨테이너 IP 하나로 뭉치지 않고 실제 클라이언트 IP 기준에 가깝게 동작한다.
+
+쉽게 말하면 이 설정은 Express에게 아래처럼 알려주는 것이다.
+
+```text
+너 앞에 Nginx 프록시가 하나 있으니까,
+Nginx가 넘겨준 실제 사용자 IP 정보를 믿고 사용해라.
+```
+
 | 대상               | 제한                                           |
 | ------------------ | ---------------------------------------------- |
 | `/api/routes/*`    | 5분당 60회                                     |
@@ -61,6 +70,8 @@ ORS와 Kakao Local 요청에 `AbortController` 기반 timeout을 적용했다.
 | Kakao POI 검색       | 5초     |
 
 timeout이 발생하면 내부 에러 이름은 `ExternalApiTimeoutError`로 구분하고, 사용자에게는 기술 용어 대신 재시도 안내 문구를 반환한다.
+
+ORS 경로 생성은 목표 거리 검증을 위해 여러 후보를 순차 시도한다. 그래서 요청 1번마다 timeout만 두면, 외부 경로 서비스가 계속 느릴 때 8초를 여러 번 기다릴 수 있다. 이번 Step에서는 ORS timeout이 한 번 발생하면 같은 요청 안의 추가 ORS 후보 재시도를 중단하도록 보완했다.
 
 ### 2.3 30초 메모리 캐시 추가
 
@@ -164,7 +175,49 @@ timeout이 없으면 서버가 응답 없는 요청을 계속 붙잡을 수 있�
 
 코드에서는 `AbortController`로 fetch 요청을 중간에 취소한다.
 
-### 3.3 메모리 캐시란?
+### 3.3 `trust proxy`란?
+
+RWR 운영 구조에서는 사용자가 Express 서버에 직접 접근하지 않는다.
+
+요청 흐름은 아래와 같다.
+
+```text
+사용자 브라우저
+→ Nginx
+→ Express 서버
+```
+
+이때 Express 입장에서 바로 앞에 보이는 상대는 사용자가 아니라 Nginx다. 아무 설정이 없으면 Express가 요청 IP를 판단할 때 실제 사용자 IP 대신 Nginx 컨테이너 IP만 보게 될 수 있다.
+
+그 상태에서 rate limit을 적용하면 문제가 생긴다.
+
+```text
+사용자 A → Nginx → Express
+사용자 B → Nginx → Express
+사용자 C → Nginx → Express
+```
+
+Express가 모두 같은 Nginx IP로 보면, 서로 다른 사용자 A/B/C의 요청이 한 사람의 요청처럼 합쳐질 수 있다. 그러면 특정 사용자가 많이 요청하지 않았는데도 같이 제한될 수 있다.
+
+`app.set("trust proxy", 1)`은 Express에 이렇게 알려주는 설정이다.
+
+```text
+Express 바로 앞에 프록시가 1개 있다.
+그 프록시가 X-Forwarded-For 헤더에 담아준 원래 사용자 IP를 믿어라.
+```
+
+여기서 `1`은 "Express 앞에 믿을 프록시가 한 단계 있다"는 뜻이다. 현재 운영 Docker 구조에서는 Nginx가 그 한 단계 프록시다.
+
+정리하면:
+
+| 설정 | 의미 |
+| ---- | ---- |
+| `trust proxy` 없음 | Express가 바로 앞의 Nginx IP를 사용자 IP처럼 볼 수 있음 |
+| `trust proxy = 1` | Express가 Nginx가 넘겨준 실제 사용자 IP를 기준으로 볼 수 있음 |
+
+이 설정은 Nginx 설정을 바꾸는 것이 아니라, Express가 프록시 뒤에서 더 정확하게 요청자를 판단하도록 돕는 서버 코드 설정이다.
+
+### 3.4 메모리 캐시란?
 
 캐시는 같은 요청 결과를 잠깐 저장해두고, 같은 요청이 다시 들어오면 외부 API를 다시 호출하지 않고 저장된 결과를 재사용하는 기술이다.
 
@@ -194,7 +247,81 @@ timeout이 없으면 서버가 응답 없는 요청을 계속 붙잡을 수 있�
 
 현재 RWR 단계에서는 짧은 반복 요청을 줄이는 목적이므로 메모리 캐시가 충분하다.
 
-### 3.4 안전한 에러 로그란?
+### 3.5 TTL과 `sha256` 캐시 key란?
+
+이번 Step의 캐시는 그냥 저장해두는 것이 아니라 `TTL`을 가진다.
+
+`TTL`은 Time To Live의 줄임말이다. 한국어로 풀면 "얼마나 오래 살아 있는 데이터인지"를 뜻한다.
+
+```text
+TTL 30초
+→ 캐시된 결과는 30초 동안만 유효하다.
+→ 30초가 지나면 오래된 값으로 보고 버린다.
+```
+
+RWR에서는 주소 변환과 POI 검색 결과를 30초만 재사용한다. 이 정도면 버튼 연타나 같은 조건 재시도를 줄일 수 있고, 너무 오래된 위치 정보를 계속 쓰는 문제도 피할 수 있다.
+
+캐시 key는 "이 요청이 전에 들어온 요청과 같은지"를 구분하는 이름표다.
+
+단순하게 만들면 아래처럼 주소 원문이 key가 될 수 있다.
+
+```text
+geocode:서울특별시 성동구 왕십리로 63
+```
+
+하지만 이렇게 하면 서버 메모리 안에 주소 원문이 그대로 남는다. 주소와 좌표는 사용자 위치와 관련된 정보라 조심하는 것이 좋다.
+
+그래서 이번 Step에서는 요청 값을 `sha256`으로 해시해서 key를 만든다.
+
+```text
+geocode:서울특별시 성동구 왕십리로 63
+→ geocode:9f2a...처럼 보이는 긴 해시 문자열
+```
+
+`sha256`은 원본 값을 고정 길이 문자열로 바꾸는 방식이다. 여기서는 암호화 저장소를 만들려는 목적이 아니라, 캐시 key에 주소 원문이 그대로 드러나지 않게 하려는 목적이다.
+
+중요한 차이는 아래와 같다.
+
+| 방식 | 장점 | 단점 |
+| ---- | ---- | ---- |
+| 주소 원문 key | 사람이 보기 쉬움 | 주소가 메모리 key에 그대로 남음 |
+| 해시 key | 원문 노출 가능성을 줄임 | 사람이 key만 보고 주소를 알 수 없음 |
+
+### 3.6 `AbortController`란?
+
+`AbortController`는 JavaScript에서 진행 중인 작업을 중간에 취소할 때 쓰는 기본 도구다.
+
+이번 Step에서는 `fetch` 요청을 취소하는 데 사용했다.
+
+개념 흐름은 아래와 같다.
+
+```text
+1. 외부 API 요청을 시작한다.
+2. 동시에 타이머를 켠다.
+3. 정해진 시간 안에 응답이 오면 정상 처리한다.
+4. 시간이 지나도 응답이 없으면 controller.abort()로 요청을 취소한다.
+5. 취소된 요청은 timeout 에러로 바꿔 사용자에게 재시도 안내를 준다.
+```
+
+코드로 아주 단순화하면 아래와 같다.
+
+```js
+const controller = new AbortController();
+
+setTimeout(() => {
+  controller.abort();
+}, 5000);
+
+fetch(url, {
+  signal: controller.signal,
+});
+```
+
+이 코드의 의미는 "5초 동안만 기다리고, 그 뒤에는 이 요청을 취소해라"에 가깝다.
+
+RWR에서는 ORS가 8초, Kakao가 5초를 넘기면 요청을 취소하도록 했다.
+
+### 3.7 안전한 에러 로그란?
 
 로그는 개발자가 문제를 찾기 위해 보는 기록이다.
 
@@ -206,7 +333,7 @@ RWR은 주소와 좌표를 다루므로 로그를 특히 조심해야 한다.
 
 이렇게 하면 문제 위치는 알 수 있지만 민감정보는 남기지 않는다.
 
-### 3.5 기존 보안 설정과의 관계
+### 3.8 기존 보안 설정과의 관계
 
 이미 적용되어 있던 보안 설정도 있다.
 
@@ -234,8 +361,8 @@ RWR은 주소와 좌표를 다루므로 로그를 특히 조심해야 한다.
 | ---- | ---------------------------------------------- | ---------------------------------------- |
 | 수정 | `server/package.json`                          | `express-rate-limit` 의존성 추가         |
 | 수정 | `server/package-lock.json`                     | 의존성 잠금 파일 갱신                    |
-| 수정 | `server/src/app.js`                            | API rate limit과 안전한 에러 로그 적용   |
-| 수정 | `server/src/services/orsService.js`            | ORS 요청 timeout 적용                    |
+| 수정 | `server/src/app.js`                            | API rate limit, 프록시 신뢰 설정, 안전한 에러 로그 적용 |
+| 수정 | `server/src/services/orsService.js`            | ORS 요청 timeout과 timeout 발생 시 추가 ORS 재시도 중단 적용 |
 | 수정 | `server/src/services/geocodingService.js`      | Kakao 위치 요청 timeout과 30초 캐시 적용 |
 | 수정 | `server/src/services/poiService.js`            | Kakao POI 요청 timeout과 30초 캐시 적용  |
 | 신규 | `server/src/utils/fetchWithTimeout.js`         | timeout fetch 공통 유틸 추가             |

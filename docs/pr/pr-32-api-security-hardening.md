@@ -39,8 +39,8 @@ DB 스키마, Docker, Nginx, Cloudflare, `.env`는 변경하지 않는다.
 | ---- | ---------------------------------------------- | ---------------------------------------- |
 | 수정 | `server/package.json`                          | `express-rate-limit` 의존성 추가         |
 | 수정 | `server/package-lock.json`                     | 의존성 잠금 파일 갱신                    |
-| 수정 | `server/src/app.js`                            | API rate limit과 안전한 에러 로그 적용   |
-| 수정 | `server/src/services/orsService.js`            | ORS 요청 timeout 적용                    |
+| 수정 | `server/src/app.js`                            | API rate limit, 프록시 신뢰 설정, 안전한 에러 로그 적용 |
+| 수정 | `server/src/services/orsService.js`            | ORS 요청 timeout과 timeout 발생 시 추가 ORS 재시도 중단 적용 |
 | 수정 | `server/src/services/geocodingService.js`      | Kakao 위치 요청 timeout과 30초 캐시 적용 |
 | 수정 | `server/src/services/poiService.js`            | Kakao POI 요청 timeout과 30초 캐시 적용  |
 | 신규 | `server/src/utils/fetchWithTimeout.js`         | timeout fetch 공통 유틸 추가             |
@@ -58,6 +58,7 @@ DB 스키마, Docker, Nginx, Cloudflare, `.env`는 변경하지 않는다.
 - `/api/routes/*`, `/api/locations/*`에 5분당 60회 제한 적용
 - 그 외 `/api/*`에 15분당 300회 제한 적용
 - `/api/health`는 제한 적용 전 등록해 헬스체크 영향을 줄임
+- Nginx 프록시 뒤 실제 클라이언트 IP 기준에 가깝게 동작하도록 `trust proxy` 1단계 설정
 - 초과 응답은 `{ success: false, message }` 형식으로 반환
 
 ### 외부 API timeout
@@ -65,6 +66,7 @@ DB 스키마, Docker, Nginx, Cloudflare, `.env`는 변경하지 않는다.
 - ORS 경로 생성 요청에 8초 timeout 적용
 - Kakao 주소/좌표 변환 요청에 5초 timeout 적용
 - Kakao POI 검색 요청에 5초 timeout 적용
+- ORS timeout 발생 시 같은 요청 안의 추가 ORS 후보 재시도 중단
 - timeout 에러는 사용자에게 재시도 안내 문구로 전달
 
 ### 30초 메모리 캐시

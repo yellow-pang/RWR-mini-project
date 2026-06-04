@@ -193,6 +193,10 @@ function createTargetMissError() {
   return error;
 }
 
+function isExternalApiTimeout(error) {
+  return error.name === "ExternalApiTimeoutError";
+}
+
 function buildGeneratedCourse({
   route,
   distance,
@@ -528,6 +532,7 @@ exports.createRoundTrip = async ({
         });
       } catch (error) {
         lastError = error;
+        if (isExternalApiTimeout(error)) break;
       }
     }
   } catch {
@@ -565,6 +570,7 @@ exports.createRoundTrip = async ({
       });
     } catch (error) {
       lastError = error;
+      if (isExternalApiTimeout(error)) break;
     }
   }
 
@@ -697,6 +703,9 @@ exports.createPointToPoint = async ({
     if (error.status === 422) {
       throw error;
     }
+    if (isExternalApiTimeout(error)) {
+      throw error;
+    }
     lastError = error;
   }
 
@@ -743,6 +752,7 @@ exports.createPointToPoint = async ({
       });
     } catch (error) {
       lastError = error;
+      if (isExternalApiTimeout(error)) break;
     }
   }
 
@@ -785,6 +795,7 @@ exports.createPointToPoint = async ({
       });
     } catch (error) {
       lastError = error;
+      if (isExternalApiTimeout(error)) break;
     }
   }
 
