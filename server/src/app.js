@@ -3,6 +3,7 @@ require("./config/env");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const { rateLimit } = require("express-rate-limit");
 
 const app = express();
 
@@ -35,11 +36,38 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+const createApiRateLimiter = ({ windowMs, max }) =>
+  rateLimit({
+    windowMs,
+    max,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    handler(req, res) {
+      res.status(429).json({
+        success: false,
+        message: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+      });
+    },
+  });
+
+const defaultApiLimiter = createApiRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+});
+const externalApiLimiter = createApiRateLimiter({
+  windowMs: 5 * 60 * 1000,
+  max: 60,
+});
+
 const coursesRouter = require("./routes/courses");
 const favoritesRouter = require("./routes/favorites");
 const historyRouter = require("./routes/history");
 const locationsRouter = require("./routes/locations");
 const routesRouter = require("./routes/routes");
+
+app.use("/api/routes", externalApiLimiter);
+app.use("/api/locations", externalApiLimiter);
+app.use("/api", defaultApiLimiter);
 
 app.use("/api/courses", coursesRouter);
 app.use("/api/favorites", favoritesRouter);
@@ -53,7 +81,11 @@ app.use((req, res) => {
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error(`[Error] ${err.message}`);
+  const status = err.status || 500;
+
+  console.error(
+    `[Error] method=${req.method} path=${req.path} status=${status} name=${err.name || "Error"}`,
+  );
 
   if (err.type === "entity.too.large") {
     return res
@@ -68,7 +100,7 @@ app.use((err, req, res, next) => {
   }
 
   res
-    .status(err.status || 500)
+    .status(status)
     .json({ success: false, message: "Internal server error" });
 });
 

@@ -1,5 +1,6 @@
 const ORS_BASE_URL = "https://api.openrouteservice.org/v2/directions";
 const poiService = require("./poiService");
+const fetchWithTimeout = require("../utils/fetchWithTimeout");
 const {
   POI_PREFERENCE_LABELS,
   ROUTE_THEME_LABELS,
@@ -17,6 +18,7 @@ const ACTIVITY_SPEEDS_KM_PER_HOUR = {
   running: 9,
 };
 const CANDIDATE_LIMIT = 5;
+const ORS_TIMEOUT_MS = 8000;
 const METERS_PER_LATITUDE_DEGREE = 111320;
 const DETOUR_LEVELS = {
   LIGHT: "light",
@@ -412,14 +414,22 @@ function createRandomWaypoints({
 }
 
 async function requestOrsRoute({ profile, coordinates, apiKey, options }) {
-  const response = await fetch(`${ORS_BASE_URL}/${profile}/geojson`, {
-    method: "POST",
-    headers: {
-      Authorization: apiKey,
-      "Content-Type": "application/json",
+  const response = await fetchWithTimeout(
+    `${ORS_BASE_URL}/${profile}/geojson`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ coordinates, ...(options ? { options } : {}) }),
     },
-    body: JSON.stringify({ coordinates, ...(options ? { options } : {}) }),
-  });
+    {
+      timeoutMs: ORS_TIMEOUT_MS,
+      timeoutMessage:
+        "외부 경로 서비스 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.",
+    },
+  );
 
   const payload = await response.json().catch(() => null);
 
