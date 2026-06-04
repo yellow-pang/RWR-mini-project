@@ -4,7 +4,7 @@
 
 - 작성일: 2026.06.04
 - 브랜치: `feat/33-edge-security-config`
-- 단계: 구현 전 계획
+- 단계: 구현 완료
 - 관련 이전 문서:
   - `docs/plans/plan-32-api-security-hardening.md`
   - `docs/steps/step-32-api-security-hardening.md`

@@ -1,8 +1,8 @@
 const KAKAO_LOCAL_BASE_URL = "https://dapi.kakao.com/v2/local";
 const fetchWithTimeout = require("../utils/fetchWithTimeout");
 const { createCacheKey, createTtlCache } = require("../utils/ttlCache");
+const securityConfig = require("../config/securityConfig");
 
-const KAKAO_TIMEOUT_MS = 5000;
 const LOCATION_CACHE_TTL_MS = 30 * 1000;
 const locationCache = createTtlCache({ ttlMs: LOCATION_CACHE_TTL_MS });
 
@@ -34,7 +34,7 @@ async function requestKakao(path, params) {
       },
     },
     {
-      timeoutMs: KAKAO_TIMEOUT_MS,
+      timeoutMs: securityConfig.kakaoTimeoutMs,
       timeoutMessage:
         "위치 변환 서비스 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.",
     },
