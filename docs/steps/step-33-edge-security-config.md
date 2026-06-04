@@ -137,40 +137,51 @@ Step 32에서는 rate limit과 timeout 값이 코드 상수였다.
 
 ---
 
-## 3. Cloudflare 설정 가이드
+## 3. Cloudflare Free 기준 설정 가이드
 
-이번 Step에서는 Cloudflare 계정을 직접 변경하지 않았다. 대신 운영자가 Cloudflare 대시보드에서 최신 방식으로 설정할 수 있도록 기준을 정리했다.
+이번 Step에서는 Cloudflare 계정을 직접 변경하지 않았다. 대신 Free tier에서 실제로 설정할 수 있는 내용과, 학습용으로만 남길 내용을 분리했다.
 
 Cloudflare 공식 문서 기준으로, 현재 rate limit은 WAF의 새 `Rate limiting rules`를 사용한다. 예전 Rate Limiting API와 Terraform의 `cloudflare_rate_limit` 리소스는 2025.06.15 이후 지원되지 않으며, API나 Terraform 자동화를 쓴다면 Rulesets API 또는 `cloudflare_ruleset` 리소스를 사용해야 한다.
 
 공식 문서:
 
 - Rate limiting rules: <https://developers.cloudflare.com/waf/rate-limiting-rules/>
+- Rate limiting parameters / Free 제한: <https://developers.cloudflare.com/waf/rate-limiting-rules/parameters/>
 - Dashboard에서 생성: <https://developers.cloudflare.com/waf/rate-limiting-rules/create-zone-dashboard/>
-- 이전 Rate Limiting 업그레이드 안내: <https://developers.cloudflare.com/waf/reference/legacy/old-rate-limiting/upgrade/>
 - Managed Rules: <https://developers.cloudflare.com/waf/managed-rules/>
+- Bot Fight Mode Free plan: <https://developers.cloudflare.com/bots/plans/free/>
 
-### 3.1 추천 Rate Limiting Rule
+### 3.1 Free에서 실제로 적용할 수 있는 우선순위
 
-RWR에서 가장 먼저 보호해야 할 경로는 외부 API 비용과 지연에 연결되는 API다.
+실제 배포가 상용 서비스 수준은 아니므로, Cloudflare Free에서는 아래만 적용 대상으로 본다.
 
-```text
-/api/routes/*
-/api/locations/*
-```
+| 우선순위 | 항목                            | 적용 여부   | 이유                                                                               |
+| -------- | ------------------------------- | ----------- | ---------------------------------------------------------------------------------- |
+| 1        | Cloudflare Proxy, 주황색 구름   | 적용 가능   | 무료로 CDN/프록시와 기본 보호를 받을 수 있다.                                      |
+| 2        | Cloudflare Free Managed Ruleset | 적용 가능   | Free에서 사용 가능한 Managed Ruleset이다.                                          |
+| 3        | Rate Limiting Rules 1개         | 선택 적용   | Free는 rule 1개만 가능하므로 생성형 API 보호에만 쓴다.                             |
+| 4        | WAF Custom Rules                | 선택 적용   | Free에서도 가능하지만, 지금은 Rate Limiting 1개와 Free Managed Ruleset을 우선한다. |
+| 5        | Bot Fight Mode                  | 신중히 보류 | 무료지만 전체 도메인에 적용되고 API 흐름에 영향을 줄 수 있다.                      |
+
+### 3.2 Free 기준 추천 Rate Limiting Rule
+
+Free에서 rate limiting rule은 1개만 만들 수 있다. 따라서 `/api/routes/*`, `/api/locations/*`처럼 외부 API 비용과 지연에 연결되는 경로를 한 rule에 묶는다.
+
+Free는 rate limiting expression에서 `Path` 중심 필드가 가능하다. `http.host eq ...` 같은 host 조건은 Free에서 제한될 수 있으므로 이번 문서의 실제 설정 예시에서는 제외한다.
 
 추천 규칙:
 
-| 항목            | 추천값                                              |
-| --------------- | --------------------------------------------------- |
-| Rule name       | `RWR generated route and location APIs`             |
-| 대상 경로       | `/api/routes/*`, `/api/locations/*`                 |
-| 기준            | IP 기준 request-based rate limiting                 |
-| 요청 수         | 60 requests                                         |
-| 기간            | 5 minutes                                           |
-| Action          | `Block` 또는 운영 초기에는 `Managed Challenge` 검토 |
-| Duration        | 10 minutes 또는 사용 가능한 가장 가까운 값          |
-| Custom response | 가능하면 429 JSON 응답                              |
+| 항목                     | Free 기준 추천값                             |
+| ------------------------ | -------------------------------------------- |
+| Rule name                | `RWR generated route and location APIs`      |
+| 대상 경로                | `/api/routes/*`, `/api/locations/*`          |
+| Expression               | Path 조건만 사용                             |
+| Counting characteristics | IP                                           |
+| Requests                 | `10`부터 시작                                |
+| Period                   | `10 seconds`                                 |
+| Action                   | `Block`                                      |
+| Duration                 | `10 seconds`                                 |
+| Custom response          | Free에서는 사용하지 않음. 기본 429 응답 사용 |
 
 Cloudflare expression 예시는 아래와 같다.
 
@@ -181,36 +192,62 @@ Cloudflare expression 예시는 아래와 같다.
 )
 ```
 
-도메인을 더 좁히고 싶다면 host 조건을 함께 추가한다.
+왜 `10 requests / 10 seconds`로 시작하나?
 
-```text
-http.host eq "rwr.yourdomain.com"
-and (
-  http.request.uri.path starts_with "/api/routes/"
-  or http.request.uri.path starts_with "/api/locations/"
-)
-```
+RWR에서 코스 생성 버튼을 정상적으로 쓰는 사용자는 10초에 10번씩 생성 요청을 보내지 않는다. 반대로 버튼 연타나 자동화 요청은 이 기준에 걸릴 가능성이 높다.
 
-Cloudflare 대시보드 기준 절차는 아래와 같다.
+그래도 Free tier의 10초 제한은 세밀한 운영 방어라기보다 "학습용/기본 방어"에 가깝다. 실제 운영 서비스라면 Cloudflare Free의 10초 rate limit만 믿지 않고 Express rate limit, Nginx timeout, 서버 로그 확인을 함께 사용해야 한다.
+
+### 3.3 Free 기준 대시보드 설정 순서
 
 ```text
 1. Cloudflare Dashboard에 로그인한다.
 2. 계정과 zone을 선택한다.
-3. Security rules 페이지로 이동한다.
+3. DNS에서 배포 도메인의 Proxy status가 주황색 구름인지 확인한다.
+4. Security rules 페이지로 이동한다.
    - 구 UI에서는 Security > WAF > Rate limiting rules로 이동할 수 있다.
-4. Create rule > Rate limiting rules를 선택한다.
-5. Rule name을 입력한다.
-6. Field/Expression에서 위 API 경로 조건을 설정한다.
-7. With the same characteristics는 IP 기준으로 둔다.
-8. When rate exceeds에서 Requests=60, Period=5 minutes를 입력한다.
-9. Then take action에서 Block 또는 Managed Challenge를 선택한다.
-10. Duration을 선택한다.
-11. Deploy 또는 Save as Draft를 선택한다.
+5. Create rule > Rate limiting rules를 선택한다.
+6. Rule name에 RWR generated route and location APIs를 입력한다.
+7. Field/Expression에서 Path 조건을 설정한다.
+8. With the same characteristics는 IP 기준으로 둔다.
+9. When rate exceeds에서 Requests=10, Period=10 seconds를 입력한다.
+10. Then take action에서 Block을 선택한다.
+11. Duration은 10 seconds로 둔다.
+12. Deploy 또는 Save as Draft를 선택한다.
+13. Security Events에서 정상 코스 생성 요청이 막히는지 확인한다.
 ```
 
-운영 초기에는 바로 강한 차단을 걸기보다, Cloudflare Security Events를 보면서 정상 사용자가 막히지 않는지 확인하는 것이 좋다.
+### 3.4 Free Managed Ruleset
 
-### 3.2 Express rate limit과 Cloudflare rate limit의 관계
+Free에서 사용할 수 있는 Managed Ruleset은 `Cloudflare Free Managed Ruleset`이다.
+
+`Cloudflare Managed Ruleset`과 `Cloudflare OWASP Core Ruleset`은 Pro 이상에서 사용할 수 있으므로 이번 Free 기준 실제 설정에는 넣지 않는다.
+
+정리하면 아래처럼 보면 된다.
+
+| Ruleset                         | Free 사용 여부 | 이번 Step 판단 |
+| ------------------------------- | -------------- | -------------- |
+| Cloudflare Free Managed Ruleset | 가능           | 적용 가능 항목 |
+| Cloudflare Managed Ruleset      | 불가           | 학습 참고      |
+| Cloudflare OWASP Core Ruleset   | 불가           | 학습 참고      |
+
+Cloudflare 문서에 따르면 Free Managed Ruleset은 모든 플랜에서 사용 가능하고, 고영향/광범위하게 악용되는 취약점에 대한 기본 보호를 제공한다.
+
+### 3.5 Bot Fight Mode
+
+Bot Fight Mode는 Free에서 사용할 수 있다. 다만 Cloudflare 문서 기준으로 전체 도메인에 적용되고, 세밀하게 조정하기 어렵다.
+
+RWR은 API 호출이 중요한 서비스라서 Bot Fight Mode가 정상 API 흐름이나 모바일 브라우저 경험에 영향을 줄 수 있다.
+
+따라서 이번 Step에서는 아래처럼 정리한다.
+
+```text
+가능은 하다.
+하지만 지금은 켜지 않는다.
+봇 트래픽이 실제로 확인되면 학습/테스트 목적으로만 검토한다.
+```
+
+### 3.6 Express rate limit과 Cloudflare rate limit의 관계
 
 이번 프로젝트에는 두 겹의 rate limit이 있다.
 
@@ -228,51 +265,6 @@ Cloudflare rate limit
 | Express    | Cloudflare를 거치지 않는 내부/직접 요청 또는 설정 누락에 대비하는 마지막 방어선이다. |
 
 Cloudflare를 켰다고 Express rate limit을 제거하지 않는 이유는 방어를 한 곳에만 의존하지 않기 위해서다.
-
-### 3.3 WAF Managed Rules 권장
-
-Cloudflare Managed Rules는 Cloudflare가 미리 준비한 보안 규칙 묶음이다.
-
-공식 문서 기준으로 Managed Rules는 아래 같은 공격 유형을 막는 데 도움을 준다.
-
-```text
-Zero-day 취약점
-OWASP Top 10 계열 공격
-민감정보 추출 시도
-유출된 인증정보 사용 시도
-```
-
-RWR은 로그인 기능은 없지만, API가 외부에 노출되는 서비스이므로 WAF Managed Rules를 켜는 것이 좋다.
-
-추천 순서:
-
-```text
-1. Security > WAF > Managed rules로 이동한다.
-2. Cloudflare Managed Ruleset 활성화를 검토한다.
-3. Cloudflare OWASP Core Ruleset 활성화를 검토한다.
-4. 처음에는 기본 또는 낮은 민감도로 시작한다.
-5. Security Events에서 정상 API 요청이 막히는지 확인한다.
-6. 정상 요청이 막히면 예외 rule 또는 override를 좁게 추가한다.
-```
-
-주의할 점은 WAF가 모든 요청 body를 무제한으로 검사하지 않는다는 것이다. Cloudflare Managed Rules의 body 검사 한도는 plan마다 다르다. RWR은 JSON body를 `4kb`로 작게 제한했으므로 이 점에서는 WAF와도 잘 맞는다.
-
-### 3.4 Bot 관련 설정
-
-Cloudflare에는 Bot Fight Mode, Super Bot Fight Mode, Bot Management 같은 봇 대응 기능이 있다. 제공 범위는 plan에 따라 다르다.
-
-RWR에서는 로그인이나 결제 기능이 없고, 핵심 보호 대상은 생성형 코스 API 과다 호출이다. 따라서 봇 기능을 무리하게 먼저 켜기보다 아래 순서가 안전하다.
-
-```text
-1. Rate limiting rules 먼저 적용
-2. WAF Managed Rules 적용
-3. Security Events 확인
-4. 봇 트래픽이 명확할 때 Bot Fight Mode 계열 검토
-```
-
-무작정 강한 challenge를 걸면 모바일 사용자나 일부 브라우저에서 코스 생성 흐름이 끊길 수 있다.
-
----
 
 ## 4. 변경 파일
 
@@ -338,8 +330,9 @@ Nginx 설정은 로컬 Nginx 실행 검증까지는 하지 않았다. 다만 설
 다음 작업 후보:
 
 - 운영 서버에서 Docker Compose 재배포 후 Nginx 설정 동작 확인
-- Cloudflare Security Events를 보고 rate limit 기준 조정
-- WAF Managed Rules 적용 후 정상 API 요청 차단 여부 확인
+- Cloudflare Free 기준 rate limiting rule 적용 여부 결정
+- Cloudflare Security Events를 보고 `10 requests / 10 seconds` 기준 조정
+- Cloudflare Free Managed Ruleset 상태 확인
 - 지도 출발지/방향 UX 개선 Step 진행
 
 ---
@@ -348,4 +341,75 @@ Nginx 설정은 로컬 Nginx 실행 검증까지는 하지 않았다. 다만 설
 
 Step 33은 Step 32에서 추가한 서버 보안 설정을 운영 앞단까지 연결한 작업이다.
 
-Nginx는 과도한 요청 크기와 오래 걸리는 proxy 연결을 먼저 제한한다. Express는 rate limit과 timeout 값을 환경변수로 받아 운영 상황에 맞게 조정할 수 있다. Cloudflare는 최신 WAF Rate limiting rules와 Managed Rules 기준으로 설정할 수 있도록 문서화했다.
+Nginx는 과도한 요청 크기와 오래 걸리는 proxy 연결을 먼저 제한한다. Express는 rate limit과 timeout 값을 환경변수로 받아 운영 상황에 맞게 조정할 수 있다. Cloudflare는 Free tier에서 실제 가능한 설정만 적용 대상으로 두고, Pro 이상 기능은 학습용 참고로 분리했다.
+
+---
+
+## 10. Notion 복사용 학습 메모
+
+아래 내용은 Notion에 그대로 복사하기 위한 요약이다.
+
+```markdown
+# Cloudflare Free tier 보안 설정 학습 메모
+
+## 이번 프로젝트에서 실제로 설정 가능한 것
+
+| 항목                            | Free 가능 여부 | 적용 판단                                                                           |
+| ------------------------------- | -------------: | ----------------------------------------------------------------------------------- |
+| Cloudflare Proxy, 주황색 구름   |           가능 | 적용 가능. DNS에서 Proxy status를 주황색 구름으로 둔다.                             |
+| WAF Custom Rules                |           가능 | 가능하지만 이번에는 필수 적용 대상은 아니다.                                        |
+| Rate Limiting Rules             |           가능 | Free는 1개 rule만 가능하므로 `/api/routes/*`, `/api/locations/*` 보호에만 사용한다. |
+| Rate limit 대상 path 조건       |           가능 | Free rate limiting rule expression은 Path 중심으로 사용한다.                        |
+| Cloudflare Free Managed Ruleset |           가능 | Free에서 사용 가능한 Managed Ruleset. 적용 가능 항목으로 본다.                      |
+| Bot Fight Mode                  |           가능 | 무료지만 전체 도메인에 적용되고 API에 영향을 줄 수 있어 이번에는 보류한다.          |
+
+## Free 기준 추천 Rate Limiting Rule
+
+| 항목                          | 값                                                                                                          |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Rule name                     | `RWR generated route and location APIs`                                                                     |
+| 대상 path                     | `/api/routes/*`, `/api/locations/*`                                                                         |
+| Expression                    | `(http.request.uri.path starts_with "/api/routes/" or http.request.uri.path starts_with "/api/locations/")` |
+| Counting characteristics      | IP                                                                                                          |
+| Requests                      | 10                                                                                                          |
+| Period                        | 10 seconds                                                                                                  |
+| Action                        | Block                                                                                                       |
+| Mitigation timeout / Duration | 10 seconds                                                                                                  |
+| Custom response               | Free에서는 사용하지 않음. 기본 429 응답 사용                                                                |
+
+## 실제 설정 순서
+
+1. Cloudflare Dashboard에 로그인한다.
+2. 계정과 zone을 선택한다.
+3. DNS에서 배포 도메인의 Proxy status가 주황색 구름인지 확인한다.
+4. Security rules 또는 Security > WAF > Rate limiting rules로 이동한다.
+5. Create rule > Rate limiting rules를 선택한다.
+6. Rule name에 `RWR generated route and location APIs`를 입력한다.
+7. Path expression을 설정한다.
+8. With the same characteristics는 IP 기준으로 둔다.
+9. When rate exceeds는 `10 requests / 10 seconds`로 둔다.
+10. Then take action은 `Block`으로 둔다.
+11. Duration은 `10 seconds`로 둔다.
+12. Deploy 또는 Save as Draft를 선택한다.
+13. Security Events에서 정상 코스 생성 요청이 막히는지 확인한다.
+
+## Free에서 실제 설정하지 않는 참고 항목
+
+| 항목                          |   Free 가능 여부 | 참고                                                                                                                      |
+| ----------------------------- | ---------------: | ------------------------------------------------------------------------------------------------------------------------- |
+| `http.host eq ...` 조건       | 제한 가능성 높음 | Free Rate Limiting rule expression에서 Host는 Free가 아니라 Pro 이상 필드로 표시된다. Free 실제 설정 예시에서는 제외한다. |
+| 60 requests / 5 minutes       |             불가 | Free는 counting period가 10초만 가능하다.                                                                                 |
+| Duration 10 minutes           |             불가 | Free는 mitigation timeout도 10초만 가능하다.                                                                              |
+| Cloudflare Managed Ruleset    |             불가 | Pro 이상. Free에서는 Free Managed Ruleset을 사용한다.                                                                     |
+| Cloudflare OWASP Core Ruleset |             불가 | Pro 이상.                                                                                                                 |
+| Super Bot Fight Mode          |             불가 | Pro 이상.                                                                                                                 |
+| Bot Management                |             불가 | Enterprise add-on.                                                                                                        |
+
+## 학습 포인트
+
+- Cloudflare Free도 Proxy, WAF Custom Rules, Rate Limiting Rules 1개, Free Managed Ruleset, Bot Fight Mode를 제공한다.
+- Rate Limiting Rules는 Free에서 1개만 가능하므로 가장 비용이 큰 API 경로에 집중하는 것이 좋다.
+- Free의 rate limit은 10초 단위만 가능해서 세밀한 운영 방어보다는 기본 방어와 학습용에 가깝다.
+- 상용 수준 운영이라면 Cloudflare Free만 믿지 말고 Express rate limit, Nginx timeout, 서버 로그 확인을 함께 사용해야 한다.
+- Bot Fight Mode는 무료지만 전체 도메인 적용이라 API나 모바일 사용자 경험에 영향을 줄 수 있어 신중히 켜야 한다.
+```

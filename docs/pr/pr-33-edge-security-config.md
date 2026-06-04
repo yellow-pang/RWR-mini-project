@@ -27,7 +27,7 @@
 
 Step 32에서 적용한 API rate limit, 외부 API timeout, body limit을 운영 환경에서 더 명확하게 조정할 수 있도록 보완한다.
 
-이번 PR은 Nginx 요청 크기 제한과 proxy timeout 명시, 서버 보안 설정값의 환경변수 승격, Cloudflare rate limit / WAF 설정 가이드 문서화를 포함한다.
+이번 PR은 Nginx 요청 크기 제한과 proxy timeout 명시, 서버 보안 설정값의 환경변수 승격, Cloudflare Free tier 기준 rate limit / WAF 설정 가이드 문서화를 포함한다.
 
 실제 Cloudflare 대시보드와 실제 `.env` 파일은 변경하지 않는다.
 
@@ -78,12 +78,14 @@ Step 32에서 적용한 API rate limit, 외부 API timeout, body limit을 운영
 - `server/.env.example`에 로컬 서버 보안 설정값 추가
 - `docker-compose.yml`에서 server 컨테이너로 보안 환경변수 전달
 
-### Cloudflare 설정 문서화
+### Cloudflare Free 기준 설정 문서화
 
 - 최신 Cloudflare WAF `Rate limiting rules` 기준으로 설정 가이드 작성
-- `/api/routes/*`, `/api/locations/*` 보호 규칙 예시 추가
-- 예전 Rate Limiting API / `cloudflare_rate_limit` 리소스는 2025.06.15 이후 지원되지 않는다는 점 기록
-- WAF Managed Rules 적용 순서와 주의사항 정리
+- Free tier에서 실제 가능한 rate limiting rule 1개 기준으로 `/api/routes/*`, `/api/locations/*` 보호 규칙 예시 추가
+- Free 기준 counting period와 mitigation timeout이 10초라는 점을 반영
+- `http.host eq ...`, 5분 period, 10분 duration, Cloudflare Managed Ruleset, OWASP Core Ruleset은 Pro 이상 또는 제한 가능 항목으로 분리
+- Cloudflare Free Managed Ruleset과 Bot Fight Mode의 적용 가능 여부와 주의사항 정리
+- Notion에 복사할 수 있는 학습 메모를 Step 문서 마지막에 추가
 
 ---
 
@@ -114,7 +116,8 @@ Nginx 컨테이너 실행 검증은 이번 로컬 작업에서는 수행하지 �
 ## 후속 확인
 
 - 운영 `.env`에 새 보안 환경변수 값을 실제로 넣을지 여부
-- Cloudflare 대시보드에서 Rate limiting rules 적용 여부
-- Cloudflare Security Events 확인 후 제한값 조정 여부
-- WAF Managed Rules 적용 후 정상 API 요청 차단 여부
+- Cloudflare Free 기준 Rate limiting rule 1개 적용 여부
+- Cloudflare Security Events 확인 후 `10 requests / 10 seconds` 기준 조정 여부
+- Cloudflare Free Managed Ruleset 상태 확인
+- Bot Fight Mode는 API 흐름 영향 가능성이 있어 실제 적용 여부 신중히 판단
 - 지도 출발지/방향 UX 개선 Step 진행 여부

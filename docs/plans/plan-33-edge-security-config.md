@@ -49,7 +49,7 @@ Step 33에서는 Step 32에서 남겨둔 운영 앞단 보안 과제를 정리�
 - `nginx/nginx.conf`에 `proxy_connect_timeout`, `proxy_send_timeout`, `proxy_read_timeout`이 명시되어 있지 않다.
 - Step 32의 rate limit과 timeout 값이 서버 코드 상수로 고정되어 있어 운영 환경별 조정이 어렵다.
 - 루트 `.env.example`, `server/.env.example`, `docker-compose.yml`에 새 보안 설정값 전달 기준이 정리되어 있지 않다.
-- Cloudflare rate limit / WAF는 대시보드 설정 영역이라 코드로 직접 적용하지 않고, 운영 체크리스트 문서가 필요하다.
+- Cloudflare rate limit / WAF는 대시보드 설정 영역이라 코드로 직접 적용하지 않고, Free tier 기준으로 실제 가능한 설정과 참고용 제한 항목을 분리한 체크리스트가 필요하다.
 
 ## 3. 사용자 확인이 필요한 결정
 
@@ -91,7 +91,7 @@ Step 33에서는 Step 32에서 남겨둔 운영 앞단 보안 과제를 정리�
 
 Cloudflare rate limit / WAF는 저장소 코드가 아니라 Cloudflare 대시보드 설정이다.
 
-이번 Step에서는 실제 Cloudflare 계정 설정을 변경하지 않는다. 대신 PR 또는 Step 문서에 운영자가 적용할 수 있는 권장 규칙과 확인 방법을 남긴다.
+이번 Step에서는 실제 Cloudflare 계정 설정을 변경하지 않는다. 대신 PR 또는 Step 문서에 Free tier에서 실제 가능한 권장 규칙, Pro 이상 참고 항목, Notion 복사용 학습 메모를 남긴다.
 
 ## 4. 구현 계획
 
@@ -134,19 +134,21 @@ Nginx limit 값은 Express의 `JSON_BODY_LIMIT`와 충돌하지 않도록 Expres
 
 개발용 `server/.env.example`에도 같은 이름을 넣어 로컬 실행 기준을 맞춘다.
 
-### 4.4 Cloudflare 운영 체크리스트 문서화
+### 4.4 Cloudflare Free 기준 운영 체크리스트 문서화
 
 Cloudflare는 코드로 변경하지 않고 문서화한다.
 
 권장 문서 내용:
 
-| 항목               | 권장 기준                                            |
-| ------------------ | ---------------------------------------------------- |
-| Rate Limiting 대상 | `/api/routes/*`, `/api/locations/*` 우선             |
-| Rate Limiting 기준 | 5분당 60회 이하부터 시작 후 실제 사용량에 맞게 조정  |
-| WAF Managed Rules  | Cloudflare 기본 Managed Rules 활성화 검토            |
-| Bot Fight Mode     | 정상 사용자가 막히지 않는지 확인 후 적용             |
-| 우회/예외          | 배포 health check, 관리자 IP가 있다면 별도 예외 검토 |
+| 항목                            | Free 기준                                                                               |
+| ------------------------------- | --------------------------------------------------------------------------------------- |
+| Cloudflare Proxy                | 주황색 구름 사용 가능                                                                   |
+| Rate Limiting 대상              | `/api/routes/*`, `/api/locations/*` 우선                                                |
+| Rate Limiting 기준              | rule 1개, Path 조건, IP 기준, `10 requests / 10 seconds`, duration `10 seconds`         |
+| Cloudflare Free Managed Ruleset | Free에서 사용 가능한 Managed Ruleset으로 정리                                           |
+| WAF Custom Rules                | Free에서 가능하지만 이번 Step에서는 필수 적용 대상이 아닌 참고 항목                     |
+| Bot Fight Mode                  | Free에서 가능하지만 전체 도메인 적용이라 API 영향 가능성이 있어 보류                    |
+| Pro 이상 참고                   | Host 조건, 5분 period, 10분 duration, Cloudflare Managed Ruleset, OWASP Core Ruleset 등 |
 
 Cloudflare 설정은 운영 환경 트래픽과 도메인 상태에 따라 달라질 수 있으므로, 이번 Step에서는 "권장값"과 "확인 항목"으로 남긴다.
 
