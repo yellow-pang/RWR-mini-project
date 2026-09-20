@@ -101,3 +101,32 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/rwr-server:main
           cache-from: type=gha,scope=rwr-server
           cache-to: type=gha,mode=max,scope=rwr-server
+
+  deploy:
+    name: Deploy published SHA on Mac mini
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: publish
+    runs-on:
+      - self-hosted
+      - macOS
+      - ARM64
+      - rwr-production
+    environment: production
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Deploy published SHA on Mac mini
+        run: |
+          test -n "${{ vars.RWR_DEPLOY_DIR }}" && test -n "${{ vars.RWR_ENV_FILE }}" || {
+            echo "RWR_DEPLOY_DIR and RWR_ENV_FILE repository variables are required." >&2
+            exit 1
+          }
+          scripts/deploy-mac.sh \
+            "${{ github.sha }}" \
+            "${{ vars.RWR_DEPLOY_DIR }}" \
+            "$GITHUB_WORKSPACE" \
+            "${{ vars.RWR_ENV_FILE }}"

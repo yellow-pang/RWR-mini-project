@@ -4,7 +4,7 @@
 - 브랜치: `chore/34-mac-mini-deployment-analysis`
 - 범위: GitHub-hosted CI, GHCR 멀티 아키텍처 image publish, 기존 VM workflow 자동 실행 중지
 - 로컬 판정: **구현과 정적·멀티 아키텍처 build 검증 통과**
-- 원격 판정: **PR 및 dev 검증 통과 — PR #37 병합 완료, 두 실행에서 validate 성공과 publish 정상 skip. GHCR 게시는 main 반영 후 확인 필요**
+- 원격 판정: **완료 — PR/dev 검증 통과, main 최초 publish 성공, web/server SHA·main 태그와 amd64/arm64 manifest 확인**
 
 ## 1. 변경 목적
 
@@ -89,9 +89,9 @@ actionlint binary는 공식 release의 macOS arm64 archive를 `/private/tmp`에 
 
 두 multi-platform 검증 build는 `type=cacheonly` output을 사용했다. 따라서 amd64/arm64 build 단계는 실제 수행했지만 local registry나 GHCR에 tag 또는 manifest를 게시하지 않았다.
 
-## 6. 원격 진행 결과와 남은 확인 항목
+## 6. 원격 진행 결과
 
-Phase 2의 최종 완료 판정에는 GitHub 외부 상태 확인이 필요하다.
+Phase 2의 최종 완료 판정은 GitHub workflow와 실제 GHCR manifest를 기준으로 확인했다.
 
 ### 2026-09-20 PR #37 보정 기록
 
@@ -115,6 +115,21 @@ Phase 2의 최종 완료 판정에는 GitHub 외부 상태 확인이 필요하�
 
 이 결과는 PR 검증과 image 게시를 분리한 설계가 실제 GitHub에서도 동작한다는 근거다. 코드 리뷰 단계에서 image를 매번 게시하지 않아 불필요한 registry 저장과 멀티 아키텍처 build 시간을 줄이고, 검증된 main commit만 배포 후보 image로 만든다.
 
+### 2026-09-20 main 최초 게시 완료 기록
+
+- 문서 보정 PR #38을 `dev`에 병합한 뒤 `dev → main` 승격 [PR #39](https://github.com/yellow-pang/RWR-mini-project/pull/39)을 생성했다.
+- PR #39의 validate가 성공하고 publish가 정상적으로 skip된 뒤 일반 merge 방식으로 병합했다.
+- main merge commit은 `8d244f8cf0497b4db26d38b46cfead62b57dac6c`이다.
+- main push workflow run `35488279464`에서 validate가 15초, publish가 2분 52초에 성공했다.
+- `rwr-web`과 `rwr-server` 모두 전체 commit SHA 태그와 `main` 태그가 생성됐다.
+- SHA 태그와 `main` 태그는 image별로 같은 OCI index digest를 가리킨다.
+  - web: `sha256:646d7090e34263d567eb50cae334935ecd78aa0dbd3c340435457627a2d7f57e`
+  - server: `sha256:2e6b1ddb1bf4839dc714cb349c0cda8e751cca9ecb1086ba8ee9d1dfad1bddb4`
+- 두 index에서 `linux/amd64`, `linux/arm64` manifest와 각 플랫폼의 provenance attestation을 확인했다.
+- 인증하지 않은 `docker buildx imagetools inspect`가 두 package에 성공해 Mac mini가 별도 GHCR credential 없이 pull할 수 있는 공개 package 상태임을 확인했다.
+- 로컬 `gh` token에는 `read:packages` scope가 없어 Packages REST API는 403을 반환했지만, workflow 게시와 공개 registry 조회에는 영향이 없었다.
+- BuildKit은 `VITE_KAKAO_MAP_KEY`를 Docker `ARG/ENV`로 전달한다는 안내를 남겼다. 이 값은 Vite 결과물에 포함되는 브라우저용 키이며 실제 보호 기준은 Kakao 허용 도메인이다. server/DB runtime secret은 image build에 전달되지 않았다.
+
 현재 완료된 원격 확인:
 
 1. PR에서 validate가 정확히 한 번 실행됨
@@ -124,17 +139,14 @@ Phase 2의 최종 완료 판정에는 GitHub 외부 상태 확인이 필요하�
 5. dev push에서 publish가 정상적으로 skip됨
 6. repository Actions Secret `VITE_KAKAO_MAP_KEY` 등록 완료
 7. publish job의 `packages: write` 권한 확인
-
-아직 남은 원격 확인:
-
-1. main push에서 validate 성공 후 publish가 실행되는지 확인
-2. `rwr-web`과 `rwr-server` package에 전체 commit SHA와 `main` tag가 생성되는지 확인
-3. 두 SHA tag manifest에 `linux/amd64`, `linux/arm64`가 모두 존재하는지 확인
-4. package visibility와 Mac mini pull 인증 방식을 Phase 3 전에 결정
+8. main push에서 validate 성공 후 publish 성공
+9. web/server의 SHA 및 `main` 태그 생성
+10. 두 image의 amd64/arm64 manifest와 digest 일치 확인
+11. 공개 pull 가능 상태 확인
 
 현재 Mac의 `gh` CLI는 `yellow-pang` 계정으로 정상 인증되어 원격 workflow와 Secret 이름을 확인할 수 있다. Secret 값 자체는 GitHub에서도 다시 조회할 수 없으며 이번 기록에도 남기지 않는다.
 
-main publish와 image manifest를 확인하기 전에는 Phase 2를 원격 완료로 판정하거나 기존 VM workflow를 제거하지 않는다.
+Phase 2는 원격 완료로 판정한다. 기존 VM workflow는 Phase 3과 Phase 4가 끝날 때까지 수동 fallback으로 유지한다.
 
 ## 7. Windows VM에서 Mac mini로 이전할 때 이 Phase가 필요한 이유
 
@@ -173,18 +185,17 @@ Phase 2는 세 번째 단계다. 이 단계에서 Mac mini 운영 설정을 건�
 
 ### 기존 서비스에 미치는 현재 영향
 
-- PR #37은 `dev`에 병합됐지만 아직 `main`에는 반영되지 않았다.
+- PR #37의 변경과 후속 검증 기록이 `main`에 반영됐다.
 - PR 검증은 GitHub-hosted runner에서 실행됐고 기존 Windows VM runner를 사용하지 않았다.
-- GHCR publish는 실행되지 않았고 Mac mini 자동 배포도 연결되지 않았다.
+- GHCR publish는 성공했지만 Mac mini 자동 배포는 아직 연결되지 않았다.
 - 기존 Linux VM의 container, volume, runner, Cloudflare Tunnel은 삭제하거나 변경하지 않았다.
-- 실제 main 반영 후에는 기존 `deploy.yml`의 자동 실행이 중지되고 GHCR image publish가 새 자동 동작이 된다.
+- 기존 `deploy.yml`의 자동 실행은 중지됐고 GHCR image publish가 새 main 자동 동작이 됐다.
 
 ### 다음 사용자 확인 지점
 
-1. dev를 main에 반영해 최초 GHCR image를 게시할지 결정
-2. main workflow와 GHCR manifest를 확인
-3. GHCR package 공개 범위와 Mac mini pull 인증 방식을 결정
-4. Phase 3의 Mac mini pull/up 구현을 시작
+1. Phase 3 운영 Compose와 pull/up script를 검토
+2. Mac mini self-hosted runner 등록과 고정 운영 경로 생성을 승인
+3. localhost 자동 배포와 rollback을 검증
 
 ## 8. 이번 Phase에서 제외한 항목
 

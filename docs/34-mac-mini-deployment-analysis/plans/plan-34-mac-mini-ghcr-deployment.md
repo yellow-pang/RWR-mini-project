@@ -352,10 +352,10 @@ Phase 2가 통과한 뒤 별도 승인으로 진행한다. 이 Phase의 끝은 C
 - 운영 Compose는 commit SHA tag를 필수로 받고 Mac에서 build하지 않는다.
 - nginx만 `127.0.0.1:${NGINX_PORT}:80`에 publish하고 server와 PostgreSQL은 host에 공개하지 않는다.
 - Compose project name과 PostgreSQL volume 이름을 명시해 `_work` 경로와 checkout 폴더명에 영향을 받지 않게 한다.
-- 운영 경로는 `/Users/tro/services/rwr`로 고정하고 Mac에 옮겨 둔 `.env`를 유지한다.
+- release와 배포 상태 경로는 `/Users/tro/services/rwr`로 고정하고, Mac에 이미 있는 `.env`는 기존 위치에서 직접 참조한다.
 - Mac arm64 self-hosted runner에는 `rwr-production` label을 추가하고 trusted `main` 배포만 실행한다.
-- workflow는 GHCR 로그인, release 파일 복사, `docker compose pull`, `docker compose up`만 수행한다.
-- 배포 script는 `.env` 존재, commit SHA 형식, required release 파일을 확인한 뒤 실행한다.
+- workflow는 release 파일 복사, `docker compose pull`, `docker compose up`만 수행한다. GHCR package가 공개 pull 가능한 현재 상태에서는 Mac에 registry credential을 저장하지 않는다.
+- 배포 script는 별도로 전달된 `.env` 경로와 필수 변수, commit SHA 형식, required release 파일을 확인한 뒤 실행한다.
 - health check 실패 시 직전 SHA와 직전 운영 Compose로 복구한다.
 - Mac에는 현재 SHA와 직전 SHA image를 남기고 다른 프로젝트 image는 정리하지 않는다.
 
@@ -367,9 +367,20 @@ scripts/deploy-mac.sh
 .github/workflows/pipeline.yml의 deploy job
 .env.example와 운영 문서
 GitHub Actions Variable: RWR_DEPLOY_DIR=/Users/tro/services/rwr
+GitHub Actions Variable: RWR_ENV_FILE=/Users/tro/dev/RWR-mini-project/.env
 GitHub Actions Environment: production
 Mac self-hosted runner labels: self-hosted, macOS, ARM64, rwr-production
 ```
+
+### 2026-09-20 실행 보정
+
+- Phase 2에서 게시한 web/server package는 인증 없는 manifest 조회와 pull이 가능했다.
+- 개인 프로젝트에서 불필요한 장기 credential을 Mac에 추가하지 않기 위해 Phase 3 deploy job의 GHCR login을 제거했다.
+- package를 private으로 전환하면 runner 전용 최소 권한 credential과 `docker login --password-stdin`을 별도 후속 작업으로 추가한다.
+- 운영 Compose와 script 계약 테스트, 실제 SHA image의 OrbStack arm64 pull/up, 새 DB 초기화, API/UI 검증이 통과했다.
+- repository variable `RWR_DEPLOY_DIR`과 GitHub Environment `production`을 생성했다.
+- `.env` 복사는 필수 조건이 아니므로 기존 파일을 직접 참조하는 `RWR_ENV_FILE` 입력으로 보정했다. 비밀값은 GitHub variable에 저장하지 않는다.
+- 고정 운영 경로, self-hosted runner, main 자동 배포는 저장소 구현 검토 후 적용한다.
 
 ### 후속 개선
 
