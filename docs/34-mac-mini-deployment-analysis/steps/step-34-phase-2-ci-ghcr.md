@@ -4,7 +4,7 @@
 - 브랜치: `chore/34-mac-mini-deployment-analysis`
 - 범위: GitHub-hosted CI, GHCR 멀티 아키텍처 image publish, 기존 VM workflow 자동 실행 중지
 - 로컬 판정: **구현과 정적·멀티 아키텍처 build 검증 통과**
-- 원격 판정: **PR 검증 통과 — PR #37 validate 성공, publish 정상 skip. GHCR 게시는 main 반영 후 확인 필요**
+- 원격 판정: **PR 및 dev 검증 통과 — PR #37 병합 완료, 두 실행에서 validate 성공과 publish 정상 skip. GHCR 게시는 main 반영 후 확인 필요**
 
 ## 1. 변경 목적
 
@@ -99,8 +99,19 @@ Phase 2의 최종 완료 판정에는 GitHub 외부 상태 확인이 필요하�
 - `dev`를 base로 [PR #37](https://github.com/yellow-pang/RWR-mini-project/pull/37)을 생성했다.
 - `CI and Publish / Validate application (pull_request)`이 14초에 성공했다.
 - `CI and Publish / Publish multi-platform images (pull_request)`는 조건식에 따라 정상적으로 skip됐다.
-- PR은 6 commits, 17 changed files이며 base branch와 충돌이 없다.
+- 최종 PR은 7 commits, 18 changed files이며 base branch와 충돌이 없었다.
 - PR 생성만으로 GHCR package나 image tag는 생성되지 않았다.
+
+### 2026-09-20 dev 병합 및 Secret 등록 기록
+
+- PR #37을 일반 merge 방식으로 `dev`에 병합했다.
+- merge commit은 `0fcda57712012df5570d0b0aba67e4472b852bfb`이다.
+- merge commit의 `CI and Publish / Validate application (push)`이 성공했다.
+- 같은 실행의 `Publish multi-platform images`는 `dev` 조건에 따라 정상적으로 skip됐다.
+- GitHub Actions의 기본 `GITHUB_TOKEN` 권한은 read지만 publish job 자체에 `packages: write`가 선언돼 있어 repository 기본 권한 변경은 필요하지 않았다.
+- repository Actions Secret에는 기존 `ENV_FILE`만 있었고 `VITE_KAKAO_MAP_KEY`가 없었다.
+- 로컬 `.env`의 `VITE_KAKAO_MAP_KEY`를 화면, 명령 인자, 도구 출력에 노출하지 않고 stdin으로 전달해 Actions Secret으로 등록했다.
+- Secret은 이름과 등록 시각만 확인했으며 실제 값은 조회하거나 문서에 기록하지 않았다.
 
 이 결과는 PR 검증과 image 게시를 분리한 설계가 실제 GitHub에서도 동작한다는 근거다. 코드 리뷰 단계에서 image를 매번 게시하지 않아 불필요한 registry 저장과 멀티 아키텍처 build 시간을 줄이고, 검증된 main commit만 배포 후보 image로 만든다.
 
@@ -108,19 +119,22 @@ Phase 2의 최종 완료 판정에는 GitHub 외부 상태 확인이 필요하�
 
 1. PR에서 validate가 정확히 한 번 실행됨
 2. PR에서 publish가 정상적으로 skip됨
+3. PR #37이 `dev`에 merge commit으로 병합됨
+4. dev push에서 validate가 정확히 한 번 실행됨
+5. dev push에서 publish가 정상적으로 skip됨
+6. repository Actions Secret `VITE_KAKAO_MAP_KEY` 등록 완료
+7. publish job의 `packages: write` 권한 확인
 
 아직 남은 원격 확인:
 
-1. repository Actions secret `VITE_KAKAO_MAP_KEY` 존재 여부와 값 갱신
-2. PR #37을 `dev`에 병합한 뒤 dev push에서 validate만 실행되는지 확인
-3. main push에서 validate 성공 후 publish가 실행되는지 확인
-4. `rwr-web`과 `rwr-server` package에 전체 commit SHA와 `main` tag가 생성되는지 확인
-5. 두 SHA tag manifest에 `linux/amd64`, `linux/arm64`가 모두 존재하는지 확인
-6. package visibility와 Mac mini pull 인증 방식을 Phase 3 전에 결정
+1. main push에서 validate 성공 후 publish가 실행되는지 확인
+2. `rwr-web`과 `rwr-server` package에 전체 commit SHA와 `main` tag가 생성되는지 확인
+3. 두 SHA tag manifest에 `linux/amd64`, `linux/arm64`가 모두 존재하는지 확인
+4. package visibility와 Mac mini pull 인증 방식을 Phase 3 전에 결정
 
-현재 Mac의 `gh` CLI에는 `yellow-pang` 계정이 선택돼 있지만 저장된 token이 유효하지 않아 Secret 이름을 원격 조회하지 못했다. 값은 조회하거나 출력하지 않았다. 원격 검증 전 `gh auth login -h github.com` 재인증 또는 GitHub 웹 설정 확인이 필요하다.
+현재 Mac의 `gh` CLI는 `yellow-pang` 계정으로 정상 인증되어 원격 workflow와 Secret 이름을 확인할 수 있다. Secret 값 자체는 GitHub에서도 다시 조회할 수 없으며 이번 기록에도 남기지 않는다.
 
-위 항목이 확인되기 전에는 Phase 2를 원격 완료로 판정하거나 기존 VM workflow를 제거하지 않는다.
+main publish와 image manifest를 확인하기 전에는 Phase 2를 원격 완료로 판정하거나 기존 VM workflow를 제거하지 않는다.
 
 ## 7. Windows VM에서 Mac mini로 이전할 때 이 Phase가 필요한 이유
 
@@ -159,7 +173,7 @@ Phase 2는 세 번째 단계다. 이 단계에서 Mac mini 운영 설정을 건�
 
 ### 기존 서비스에 미치는 현재 영향
 
-- PR #37은 아직 `dev`에 병합되지 않아 기존 branch와 운영 container를 변경하지 않았다.
+- PR #37은 `dev`에 병합됐지만 아직 `main`에는 반영되지 않았다.
 - PR 검증은 GitHub-hosted runner에서 실행됐고 기존 Windows VM runner를 사용하지 않았다.
 - GHCR publish는 실행되지 않았고 Mac mini 자동 배포도 연결되지 않았다.
 - 기존 Linux VM의 container, volume, runner, Cloudflare Tunnel은 삭제하거나 변경하지 않았다.
@@ -167,11 +181,10 @@ Phase 2는 세 번째 단계다. 이 단계에서 Mac mini 운영 설정을 건�
 
 ### 다음 사용자 확인 지점
 
-1. PR #37을 `dev`에 병합할지 결정
-2. 병합 후 dev validate 결과를 확인
-3. main 반영 전에 `VITE_KAKAO_MAP_KEY` Secret과 Actions package 권한 확인
-4. dev를 main에 반영해 최초 GHCR image를 게시할지 결정
-5. 게시 결과를 확인한 뒤 Phase 3의 Mac mini pull/up 구현 승인
+1. dev를 main에 반영해 최초 GHCR image를 게시할지 결정
+2. main workflow와 GHCR manifest를 확인
+3. GHCR package 공개 범위와 Mac mini pull 인증 방식을 결정
+4. Phase 3의 Mac mini pull/up 구현을 시작
 
 ## 8. 이번 Phase에서 제외한 항목
 
