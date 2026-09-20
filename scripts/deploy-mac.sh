@@ -5,6 +5,7 @@ set -Eeuo pipefail
 IMAGE_SHA=${1:-}
 DEPLOY_DIR=${2:-}
 SOURCE_DIR=${3:-}
+ENV_FILE=${4:-}
 DOCKER_BIN=${RWR_DOCKER_BIN:-docker}
 CURL_BIN=${RWR_CURL_BIN:-curl}
 HEALTH_ATTEMPTS=${RWR_HEALTH_ATTEMPTS:-12}
@@ -22,13 +23,14 @@ fail() {
 [[ "$IMAGE_SHA" =~ ^[0-9a-f]{40}$ ]] || fail "배포 image tag는 40자리 Git commit SHA여야 합니다."
 [[ -n "$DEPLOY_DIR" ]] || fail "배포 경로가 필요합니다."
 [[ -n "$SOURCE_DIR" ]] || fail "release 원본 경로가 필요합니다."
+[[ -n "$ENV_FILE" ]] || fail "runtime .env 경로가 필요합니다."
 
 SOURCE_DIR=$(cd "$SOURCE_DIR" && pwd -P)
 mkdir -p "$DEPLOY_DIR"
 DEPLOY_DIR=$(cd "$DEPLOY_DIR" && pwd -P)
 
-ENV_FILE="$DEPLOY_DIR/.env"
 [[ -f "$ENV_FILE" ]] || fail "$ENV_FILE 파일이 필요합니다."
+ENV_FILE=$(cd "$(dirname "$ENV_FILE")" && pwd -P)/$(basename "$ENV_FILE")
 
 required_env_names=(
   CORS_ORIGIN

@@ -37,8 +37,9 @@ Cloudflare는 아직 연결하지 않는다. localhost 배포가 독립적으로
 
 ### `scripts/deploy-mac.sh`
 
-- 인자로 commit SHA, 고정 배포 경로, workflow checkout 원본 경로를 받는다.
-- SHA 형식, 고정 경로의 `.env`, 필수 환경변수 이름, Compose/schema/seed 파일을 먼저 검증한다.
+- 인자로 commit SHA, 고정 배포 경로, workflow checkout 원본 경로, 기존 runtime `.env` 경로를 받는다.
+- SHA 형식, 전달된 `.env`와 필수 환경변수 이름, Compose/schema/seed 파일을 먼저 검증한다.
+- `.env`는 고정 배포 경로나 workflow checkout으로 복사하지 않는다.
 - release 파일을 `${DEPLOY_DIR}/releases/${SHA}`에 복사한다.
 - `docker compose pull` 후 `up -d --remove-orphans`만 실행한다.
 - nginx publish port의 `/api/health`와 `/`가 모두 응답해야 성공으로 기록한다.
@@ -51,9 +52,9 @@ Cloudflare는 아직 연결하지 않는다. localhost 배포가 독립적으로
 - main push의 `publish` 성공 뒤에만 실행한다.
 - runner label은 `self-hosted`, `macOS`, `ARM64`, `rwr-production`이다.
 - GitHub Environment `production`을 사용한다.
-- repository variable `RWR_DEPLOY_DIR`의 고정 경로를 script에 전달한다.
+- repository variable `RWR_DEPLOY_DIR`의 고정 경로와 `RWR_ENV_FILE`의 기존 runtime 파일 경로를 script에 전달한다.
 - GHCR package가 공개 pull 가능한 상태여서 Mac에 별도 registry credential을 저장하지 않는다.
-- checkout은 release 파일 공급원일 뿐이며 실제 runtime `.env`, 상태 파일, volume은 고정 운영 경로에 남는다.
+- checkout은 release 파일 공급원일 뿐이다. runtime `.env`는 기존 위치에 남고 상태 파일과 volume만 고정 운영 경로에 유지한다.
 
 ## 3. RED→GREEN 배포 계약 검증
 
@@ -98,7 +99,7 @@ nginx container가 시작된 직후 첫 health 요청은 빈 응답이었고 scr
 | 자동화 | main SHA image pull, release 복사, Compose up, health, rollback | 반복 배포를 동일한 순서로 재현하기 위해 |
 | 자동화 | 현재/직전 RWR SHA image 정리 | Mac disk 누적을 제한하면서 rollback 한 세대를 보장하기 위해 |
 | 유지 | 기존 Phase 0/1 container와 volume | 이전 방식과 새 image 방식 비교 근거를 남기기 위해 |
-| 사용자 확인 | `/Users/tro/services/rwr` 생성과 `.env` 이동 | repository 밖의 실제 운영 상태와 secret 파일을 변경하기 때문에 |
+| 사용자 확인 | `/Users/tro/services/rwr` 생성 | repository 밖에 실제 운영 release와 상태를 만들기 때문에 |
 | 사용자 확인 | Mac self-hosted runner 등록 및 자동 시작 | GitHub workflow가 Mac에서 명령을 실행할 수 있는 지속 권한이 생기기 때문에 |
 | 사용자 확인 | Phase 3 workflow를 main에 병합 | 이후 main push마다 Mac 자동 배포가 실행되기 때문에 |
 
@@ -107,7 +108,7 @@ nginx container가 시작된 직후 첫 health 요청은 빈 응답이었고 scr
 - 임시 `rwr-production` project는 localhost 8092에서 실행 중이며 외부 Cloudflare 트래픽에는 연결되지 않았다.
 - 기존 Windows VM container, runner, volume, Tunnel은 변경하거나 삭제하지 않았다.
 - GHCR package는 공개 pull 가능하므로 Mac runner에 package token을 저장하지 않는다.
-- repository variable `RWR_DEPLOY_DIR=/Users/tro/services/rwr`와 GitHub Environment `production`을 생성했다. Environment에는 현재 별도 승인 규칙이 없고 workflow의 main push 조건이 배포 경계를 담당한다.
+- repository variable `RWR_DEPLOY_DIR=/Users/tro/services/rwr`와 GitHub Environment `production`을 생성했다. `RWR_ENV_FILE`에는 값이 아닌 기존 `.env`의 로컬 경로만 등록한다. Environment에는 현재 별도 승인 규칙이 없고 workflow의 main push 조건이 배포 경계를 담당한다.
 - 고정 운영 경로와 runner가 준비되기 전에는 Phase 3 workflow를 main에 반영하지 않는다.
 - runner 등록 후 같은 SHA 재배포, 다음 SHA 배포, 실제 rollback, Mac 재부팅 뒤 OrbStack/runner/container 복구를 확인해야 한다.
 - 위 항목이 통과해야 Phase 4 Cloudflare 전환을 시작한다.

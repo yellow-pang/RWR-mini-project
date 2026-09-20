@@ -13,7 +13,7 @@
 | 작업 브랜치 | `feat/34-mac-mini-pull-deployment` |
 | 병합 대상 | `dev` |
 | PR | [#40](https://github.com/yellow-pang/RWR-mini-project/pull/40) |
-| 상태 | Open, 자동 검증 진행 중 |
+| 상태 | `dev` 병합 완료 (`4b561449bd17229d0f6079eda16b876b18da76a8`) |
 | 범위 | 운영 Compose, 배포/rollback script, main 전용 Mac deploy job, Phase 2~3 기록 |
 
 ## PR 제목
@@ -26,7 +26,7 @@
 
 Phase 2에서 main commit의 web/server image를 GHCR에 게시하고 amd64/arm64 manifest를 확인했다. 다음 단계는 Mac mini가 소스 checkout에서 image를 다시 build하지 않고, 게시가 끝난 정확한 commit SHA image를 고정 경로에서 실행하도록 만드는 것이다.
 
-기존 Windows VM의 self-hosted runner는 `_work` checkout을 운영 디렉터리로 사용했다. 새 구조는 checkout을 release 파일 공급원으로만 사용하고 runtime `.env`, PostgreSQL volume, 현재/직전 SHA 상태를 `/Users/tro/services/rwr`에 유지한다.
+기존 Windows VM의 self-hosted runner는 `_work` checkout을 운영 디렉터리로 사용했다. 새 구조는 checkout을 release 파일 공급원으로만 사용하고 PostgreSQL volume과 현재/직전 SHA 상태를 `/Users/tro/services/rwr`에 유지한다. runtime `.env`는 현재 위치에서 직접 참조한다.
 
 ## 선택한 방식
 
@@ -96,9 +96,9 @@ React, Express, DB schema/seed, API 응답, 코스·즐겨찾기·이력 로직�
 ## 외부 설정과 병합 전 조건
 
 - repository variable `RWR_DEPLOY_DIR=/Users/tro/services/rwr` 등록 완료
+- repository variable `RWR_ENV_FILE`에는 기존 `.env` 경로만 등록하며 파일 내용은 등록하지 않음
 - GitHub Environment `production` 생성 완료
 - Mac self-hosted runner 등록 전
-- `/Users/tro/services/rwr/.env` 배치 전
 - 고정 운영 경로 실제 배포 전
 
 runner는 GitHub workflow가 Mac에서 지속적으로 명령을 실행하는 권한이므로 사용자가 최종 승인한 뒤 등록한다. runner와 고정 경로가 준비되기 전에는 이 PR을 main에 승격하지 않는다.
@@ -109,4 +109,4 @@ runner는 GitHub workflow가 Mac에서 지속적으로 명령을 실행하는 �
 - rollback이 실패했을 때 성공으로 오인할 수 없는지
 - 정리 대상이 RWR의 오래된 SHA release와 두 image로 제한되는지
 - workflow가 main push와 publish 성공 뒤 지정 Mac runner에서만 실행되는지
-- runtime `.env`가 checkout이나 GHCR image에 포함되지 않는지
+- runtime `.env`가 복사되거나 checkout/GHCR image에 포함되지 않는지

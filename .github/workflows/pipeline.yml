@@ -121,11 +121,12 @@ jobs:
 
       - name: Deploy published SHA on Mac mini
         run: |
-          test -n "${{ vars.RWR_DEPLOY_DIR }}" || {
-            echo "RWR_DEPLOY_DIR repository variable is required." >&2
+          test -n "${{ vars.RWR_DEPLOY_DIR }}" && test -n "${{ vars.RWR_ENV_FILE }}" || {
+            echo "RWR_DEPLOY_DIR and RWR_ENV_FILE repository variables are required." >&2
             exit 1
           }
           scripts/deploy-mac.sh \
             "${{ github.sha }}" \
             "${{ vars.RWR_DEPLOY_DIR }}" \
-            "$GITHUB_WORKSPACE"
+            "$GITHUB_WORKSPACE" \
+            "${{ vars.RWR_ENV_FILE }}"

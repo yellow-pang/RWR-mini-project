@@ -25,6 +25,7 @@ command = deploy_step.fetch("run")
 assert(command.include?("scripts/deploy-mac.sh"), "deploy job must call deploy-mac.sh")
 assert(command.include?("\${{ github.sha }}"), "deploy job must pass the workflow commit SHA")
 assert(command.include?("\${{ vars.RWR_DEPLOY_DIR }}"), "deploy job must use the configured fixed deployment directory")
+assert(command.include?("\${{ vars.RWR_ENV_FILE }}"), "deploy job must reference the existing runtime env file")
 assert(!command.match?(/docker\s+(?:compose\s+)?build/), "deploy job must not build on the Mac runner")
 
 puts "PASS: main publish 이후 Mac 고정 경로 배포 workflow 계약"
