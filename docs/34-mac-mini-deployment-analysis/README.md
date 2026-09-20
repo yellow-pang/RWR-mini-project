@@ -12,6 +12,7 @@
 - 2026-09-20 Phase 3 운영 준비 보정: `/Users/tro/services/rwr` 고정 경로 배포와 `rwr-mac-mini` runner의 LaunchAgent 등록을 완료했다. runtime `.env`는 복사하지 않고 기존 `/Users/tro/dev/RWR-mini-project/.env`를 직접 참조한다. PR #42 검증까지 통과했으며 main 병합과 최초 자동 배포 확인이 남아 있다.
 - 2026-09-20 Phase 3 자동 배포 보정: PR #42를 main에 병합한 뒤 workflow `35493924836`의 validate, GHCR publish, Mac deploy가 모두 성공했다. production은 merge SHA `040f02d2bc90742a92633ee1468bacbfe4ed5c75`의 arm64 image를 실행하며 직전 SHA를 rollback 세대로 보존한다. 실제 실패 유도 rollback과 Mac 재부팅 복구 검증은 남아 있다.
 - 2026-09-20 환경 정리 보정: 검증용 `rwr-phase0`, `rwr-phase1` container/network를 제거하고 두 PostgreSQL volume은 보존했다. 같은 OrbStack에서 `health-center`, `smartdrain-mac` 이전 작업이 진행 중이므로 Mac 재부팅과 공유 Cloudflare 변경은 두 작업과 조율할 때까지 보류한다.
+- 2026-09-20 Cloudflare 조율 보정: Health Center의 공통 운영 문서가 정한 Mac host의 remotely-managed Tunnel 1개와 프로젝트별 localhost route 방식을 공통 기준으로 채택한다. Cloudflare 변경 소유권은 해당 세션 하나에 두고 RWR 세션은 `127.0.0.1:8090` origin 정보와 검증 결과만 인계한다.
 
 ## 폴더 구조
 

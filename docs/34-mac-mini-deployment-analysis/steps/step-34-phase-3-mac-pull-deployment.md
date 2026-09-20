@@ -205,3 +205,54 @@ RWR 작업은 이 프로젝트들의 container, network, volume과 Cloudflare �
 - [ ] Mac 재부팅 전 두 프로젝트 담당 작업과 중단 시간 조율
 - [ ] 재부팅 후 OrbStack, 세 프로젝트, RWR runner 복구 확인
 - [ ] 공유 Cloudflare Tunnel/hostname 충돌 여부 확인 후 Phase 4 진행
+
+## 10. 다른 세션 Cloudflare 작업 인계 확인
+
+2026-09-20 읽기 전용으로 다른 두 저장소와 Mac host 상태를 확인했다. 파일, container와 Cloudflare 설정은 변경하지 않았다.
+
+| 대상 | 확인 상태 | RWR 판단 |
+| --- | --- | --- |
+| Health Center | `docs/mac-orbstack-deployment-analysis`, HEAD `5c3ea17`, 작업 트리 clean | 공통 Tunnel 설계와 변경 소유권을 가진 조율 세션으로 사용 |
+| SmartDrain | `chore/macos-orbstack-migration`, HEAD `4e69a31`, Step/nginx 변경 진행 중 | 다른 세션 작업이므로 파일·container·route를 수정하지 않음 |
+| Mac cloudflared | binary `2026.9.1` 설치, service/LaunchAgent와 `~/.cloudflared` 설정 없음 | Tunnel connector는 아직 실제 서비스 등록 전 단계 |
+
+현재 localhost origin은 서로 충돌하지 않는다.
+
+| 프로젝트 | 외부 공개용 origin | 상태 |
+| --- | --- | --- |
+| Health Center frontend | `http://127.0.0.1:3000` | 실행 중 |
+| Health Center backend | `http://127.0.0.1:8080` | 실행 중 |
+| RWR | `http://127.0.0.1:8090` | production 자동 배포 완료 |
+| SmartDrain | `http://127.0.0.1:8099` | localhost E2E 완료, Cloudflare 전환 전 |
+
+### 권장 공동 작업 순서
+
+1. Health Center 공통 운영 세션을 Cloudflare 변경의 단일 소유자로 유지한다.
+2. SmartDrain 세션이 현재 nginx/Step 변경을 커밋하고 localhost Gate C 상태를 확정한다.
+3. 공통 세션에서 새 Mac 전용 remotely-managed Tunnel 하나를 만들거나 기존 생성 여부를 재확인한다.
+4. host cloudflared를 Dashboard가 제공한 token 방식으로 서비스 등록하고 connector가 Healthy인지 확인한다.
+5. 운영 hostname을 옮기기 전에 프로젝트별 한 단계 임시 hostname을 각 localhost origin에 연결한다.
+6. RWR은 임시 hostname에서 UI, `/api/health`, 코스 생성, 즐겨찾기와 브라우저 CORS/지도 도메인을 검증한다.
+7. Health Center frontend/backend는 한 쌍으로, RWR과 SmartDrain은 각각 독립적으로 운영 hostname을 전환한다.
+8. 문제가 생긴 프로젝트 route만 기존 VM Tunnel로 되돌리고 다른 프로젝트 route는 유지한다.
+9. 세 세션의 변경·검증 기록이 모두 커밋된 뒤 한 번의 Mac 재부팅으로 OrbStack, 세 Compose project, runner와 cloudflared 복구를 공동 검증한다.
+10. 관찰 기간과 데이터 보존을 확인한 뒤에만 기존 VM/Tunnel 정리를 별도 승인으로 진행한다.
+
+### 현재 체크포인트
+
+- [x] RWR production localhost origin과 health 계약 인계 가능
+- [x] RWR Phase 0/1 검증 container 제거, production만 유지
+- [x] 프로젝트별 localhost port 충돌 없음
+- [x] 기존 VM Tunnel replica를 사용하지 않는 기준 확인
+- [ ] SmartDrain 현재 변경 커밋 및 Gate C 인계 완료
+- [ ] 공통 세션에서 실제 Tunnel/DNS/Access 현황 재확인
+- [ ] Mac host cloudflared service 등록
+- [ ] 프로젝트별 임시 hostname 검증
+- [ ] 프로젝트별 운영 hostname 전환
+- [ ] 공동 재부팅 복구 검증
+
+참고한 공식 문서:
+
+- [Cloudflare Tunnel routing과 다중 published application](https://developers.cloudflare.com/tunnel/concepts/routing/)
+- [Remotely-managed Tunnel 생성](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/get-started/create-remote-tunnel/)
+- [macOS service 실행 방식](https://developers.cloudflare.com/tunnel/features/locally-managed-tunnels/as-a-service/macos/)
