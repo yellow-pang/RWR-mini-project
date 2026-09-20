@@ -10,6 +10,7 @@
 - Phase 2에서 GitHub-hosted CI와 GHCR 멀티 아키텍처 게시 workflow를 구현했다. PR/dev 검증과 main 최초 게시에 성공했고, web/server의 SHA·main 태그와 amd64/arm64 manifest를 확인했다.
 - Phase 3에서 GHCR SHA image 전용 운영 Compose, Mac 고정 경로 배포 script, main 게시 후 실행할 self-hosted deploy job을 구현 중이다. 공개 GHCR image의 실제 OrbStack pull/up과 DB/API/UI 계약은 통과했고 runner 등록과 고정 운영 경로 전환이 남아 있다.
 - 2026-09-20 Phase 3 운영 준비 보정: `/Users/tro/services/rwr` 고정 경로 배포와 `rwr-mac-mini` runner의 LaunchAgent 등록을 완료했다. runtime `.env`는 복사하지 않고 기존 `/Users/tro/dev/RWR-mini-project/.env`를 직접 참조한다. PR #42 검증까지 통과했으며 main 병합과 최초 자동 배포 확인이 남아 있다.
+- 2026-09-20 Phase 3 자동 배포 보정: PR #42를 main에 병합한 뒤 workflow `35493924836`의 validate, GHCR publish, Mac deploy가 모두 성공했다. production은 merge SHA `040f02d2bc90742a92633ee1468bacbfe4ed5c75`의 arm64 image를 실행하며 직전 SHA를 rollback 세대로 보존한다. 실제 실패 유도 rollback과 Mac 재부팅 복구 검증은 남아 있다.
 
 ## 폴더 구조
 

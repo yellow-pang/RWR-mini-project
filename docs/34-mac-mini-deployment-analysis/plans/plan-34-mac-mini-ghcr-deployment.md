@@ -380,7 +380,10 @@ Mac self-hosted runner labels: self-hosted, macOS, ARM64, rwr-production
 - 운영 Compose와 script 계약 테스트, 실제 SHA image의 OrbStack arm64 pull/up, 새 DB 초기화, API/UI 검증이 통과했다.
 - repository variable `RWR_DEPLOY_DIR`과 GitHub Environment `production`을 생성했다.
 - `.env` 복사는 필수 조건이 아니므로 기존 파일을 직접 참조하는 `RWR_ENV_FILE` 입력으로 보정했다. 비밀값은 GitHub variable에 저장하지 않는다.
-- 고정 운영 경로, self-hosted runner, main 자동 배포는 저장소 구현 검토 후 적용한다.
+- `/Users/tro/services/rwr` 고정 운영 경로와 macOS LaunchAgent 기반 `rwr-mac-mini` runner를 구성했다.
+- PR #42의 main merge SHA `040f02d2bc90742a92633ee1468bacbfe4ed5c75`에 대해 validate, multi-platform publish, Mac 자동 deploy가 순서대로 성공했다.
+- production web/server와 PostgreSQL image가 모두 arm64로 실행되고 API/UI, DB seed 10건, current/previous 두 release 보관과 `.env` 미복사를 확인했다.
+- 실제 실패를 유도하는 rollback과 Mac 재부팅 후 복구는 운영 중단 가능성이 있어 별도 확인 뒤 수행한다.
 
 ### 후속 개선
 

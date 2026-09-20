@@ -4,7 +4,7 @@
 - 브랜치: `feat/34-mac-mini-pull-deployment`
 - 범위: GHCR SHA image 전용 Compose, 고정 경로 배포 및 rollback script, main 전용 Mac deploy job
 - 구현 판정: **저장소 구현 및 실제 OrbStack pull/up 검증 통과**
-- 자동화 판정: **대기 — Mac self-hosted runner 등록과 고정 운영 경로 전환 필요**
+- 자동화 판정: **main 최초 자동 배포 통과 — 실제 실패 rollback과 Mac 재부팅 복구 검증 필요**
 
 ## 1. 이 Phase가 필요한 이유
 
@@ -150,3 +150,32 @@ Phase 3 구현을 `dev`에 병합한 뒤 Mac mini의 실제 운영 경로와 run
 - 병합 전까지 production은 기존 main SHA를 실행하며 Cloudflare Tunnel과 Windows VM은 변경하지 않는다.
 - 다음 단계는 PR #42 병합 승인, publish/deploy job 성공 확인, 실행 image SHA 확인이다.
 - Cloudflare 연결과 Windows VM 종료는 자동 배포가 확인된 뒤 Phase 4에서 별도로 진행한다.
+
+## 8. PR #42 main 최초 자동 배포 결과
+
+PR #42를 merge commit `040f02d2bc90742a92633ee1468bacbfe4ed5c75`로 main에 병합했다. GitHub Actions workflow [35493924836](https://github.com/yellow-pang/RWR-mini-project/actions/runs/35493924836)이 다음 순서로 모두 성공했다.
+
+| Job | 결과 | 실행 위치 |
+| --- | --- | --- |
+| Validate application | 성공, 17초 | GitHub-hosted Ubuntu runner |
+| Publish multi-platform images | 성공, 30초 | GitHub-hosted Ubuntu runner |
+| Deploy published SHA on Mac mini | 성공, 41초 | `rwr-mac-mini` self-hosted runner |
+
+자동 배포 후 실제 Mac 상태는 다음과 같다.
+
+| 확인 항목 | 결과 |
+| --- | --- |
+| current SHA | `040f02d2bc90742a92633ee1468bacbfe4ed5c75` |
+| previous SHA | `8d244f8cf0497b4db26d38b46cfead62b57dac6c` |
+| 보관 release | current와 previous 두 디렉터리 |
+| web/server 실행 tag | main merge SHA와 일치 |
+| image architecture | web, server, PostgreSQL 모두 `arm64` |
+| 공개 host port | nginx `127.0.0.1:8090`만 공개 |
+| API/UI | `/api/health` 정상, root UI HTTP 200 |
+| PostgreSQL | healthy, seed course 10건, favorites/history 테이블 유지 |
+| runtime `.env` | 기존 경로 직접 참조, 고정 배포 경로에 사본 없음 |
+| runner | online, job 종료 후 idle |
+
+이 결과로 `GitHub Actions → GHCR → Mac mini runner → OrbStack pull/up` 연결은 실제 main push에서 재현됐다. 배포 job에는 application build 명령이 없었고 runner `_work`는 checkout으로만 사용됐다.
+
+남은 Phase 3 검증은 실제 health 실패를 유도한 rollback과 Mac 재부팅 뒤 OrbStack, runner, container 복구다. 두 작업은 정상 production에 일시 영향을 줄 수 있으므로 사용자 확인 뒤 진행한다. Cloudflare Tunnel과 Windows VM은 변경하지 않았다.
