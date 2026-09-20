@@ -9,6 +9,7 @@
 - Phase 1에서 Docker build context를 제한하고 Node.js 24 기반 arm64 이미지의 build, 실행, DB/API/UI 회귀 검증을 완료했다. `.env`와 Cloudflare는 변경하지 않았다.
 - Phase 2에서 GitHub-hosted CI와 GHCR 멀티 아키텍처 게시 workflow를 구현했다. PR/dev 검증과 main 최초 게시에 성공했고, web/server의 SHA·main 태그와 amd64/arm64 manifest를 확인했다.
 - Phase 3에서 GHCR SHA image 전용 운영 Compose, Mac 고정 경로 배포 script, main 게시 후 실행할 self-hosted deploy job을 구현 중이다. 공개 GHCR image의 실제 OrbStack pull/up과 DB/API/UI 계약은 통과했고 runner 등록과 고정 운영 경로 전환이 남아 있다.
+- 2026-09-20 Phase 3 운영 준비 보정: `/Users/tro/services/rwr` 고정 경로 배포와 `rwr-mac-mini` runner의 LaunchAgent 등록을 완료했다. runtime `.env`는 복사하지 않고 기존 `/Users/tro/dev/RWR-mini-project/.env`를 직접 참조한다. PR #42 검증까지 통과했으며 main 병합과 최초 자동 배포 확인이 남아 있다.
 
 ## 폴더 구조
 
@@ -26,7 +27,8 @@
 │   └── step-34-phase-3-mac-pull-deployment.md
 └── pr/
     ├── pr-34-mac-mini-ghcr-foundation.md
-    └── pr-34-mac-mini-pull-deployment.md
+    ├── pr-34-mac-mini-pull-deployment.md
+    └── pr-34-mac-mini-deployment-release.md
 ```
 
 - [현재 배포 분석](analysis/01-current-deployment.md)
@@ -37,5 +39,6 @@
 - [Phase 3 Mac 고정 경로 pull 배포](steps/step-34-phase-3-mac-pull-deployment.md)
 - [PR #37 Mac mini 이전 검증 및 GHCR 배포 기반 구성](pr/pr-34-mac-mini-ghcr-foundation.md)
 - [PR #40 Mac mini GHCR pull 배포 자동화](pr/pr-34-mac-mini-pull-deployment.md)
+- [PR #42 Mac mini GHCR pull 자동 배포 활성화](pr/pr-34-mac-mini-deployment-release.md)
 
 기존 `docs/plans`, `docs/steps`, `docs/pr` 기록은 옮기거나 삭제하지 않는다. 이번 브랜치의 후속 Plan/Step/PR은 사용자 요청으로 준비한 작업별 하위 폴더에 작성한다. Phase 0은 Mac Compose 재현, Phase 1은 Docker runtime 정비, Phase 2는 GitHub-hosted CI와 GHCR 게시 준비를 담당한다. Phase 2의 PR 및 `dev` 원격 실행 결과는 Step 문서의 보정 기록에 남겼고, 최초 main publish 결과도 같은 문서에 이어서 기록한다. 다른 프로젝트의 폴더 구조는 제공되지 않아 저장소의 기존 분류를 참고했다.

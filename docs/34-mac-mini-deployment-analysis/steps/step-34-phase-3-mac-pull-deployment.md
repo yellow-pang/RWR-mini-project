@@ -112,3 +112,41 @@ nginx container가 시작된 직후 첫 health 요청은 빈 응답이었고 scr
 - 고정 운영 경로와 runner가 준비되기 전에는 Phase 3 workflow를 main에 반영하지 않는다.
 - runner 등록 후 같은 SHA 재배포, 다음 SHA 배포, 실제 rollback, Mac 재부팅 뒤 OrbStack/runner/container 복구를 확인해야 한다.
 - 위 항목이 통과해야 Phase 4 Cloudflare 전환을 시작한다.
+
+## 7. 2026-09-20 운영 준비 보정 기록
+
+Phase 3 구현을 `dev`에 병합한 뒤 Mac mini의 실제 운영 경로와 runner를 준비했다. 이 절은 위의 "등록 전", "전환 전" 상태를 이후 실행 결과로 보정한다.
+
+### 고정 운영 경로 전환
+
+- `/Users/tro/services/rwr`를 운영 release와 상태 파일 전용 경로로 생성했다.
+- 기존 runtime 환경변수 파일은 `/Users/tro/dev/RWR-mini-project/.env`에 그대로 두고 배포 script의 네 번째 인자로 전달했다.
+- `/Users/tro/services/rwr` 안에 `.env`가 생성되거나 복사되지 않았음을 확인했다.
+- GHCR의 기존 main SHA `8d244f8cf0497b4db26d38b46cfead62b57dac6c`를 고정 경로에서 pull/up했다.
+- production nginx는 `127.0.0.1:8090`에만 publish되며 API health와 UI root가 정상 응답했다.
+- 같은 8090 port를 사용하던 Phase 0 container는 volume을 삭제하지 않고 중지했다. `rwr-production`과의 host port 충돌을 피하기 위한 조치이며 DB 데이터를 제거한 것은 아니다.
+
+### Mac self-hosted runner 등록
+
+- GitHub 공식 macOS ARM64 runner `2.337.0`을 사용했다.
+- 다운로드 파일의 SHA-256이 공식 값 `5a2cd92908a93d7276a194e1de6008099f3e7946f3f8e14aa7a1a7b4a31fdec2`와 일치하는지 확인한 뒤 `/Users/tro/actions-runner-rwr`에 설치했다.
+- runner 이름은 `rwr-mac-mini`, 라벨은 `self-hosted`, `macOS`, `ARM64`, `rwr-production`이다.
+- macOS LaunchAgent `actions.runner.yellow-pang-RWR-mini-project.rwr-mac-mini`로 설치해 로그인 세션에서 자동 시작하도록 구성했다.
+- runner가 GitHub에서 `online`이고 `Listening for Jobs` 상태임을 확인했다.
+- 기존 다른 프로젝트의 Linux runner `health-reservation-server`는 수정하지 않았다.
+
+### GitHub 설정과 보안 경계
+
+- repository variable `RWR_DEPLOY_DIR`은 `/Users/tro/services/rwr`이다.
+- repository variable `RWR_ENV_FILE`은 `/Users/tro/dev/RWR-mini-project/.env`라는 경로 문자열이다.
+- `.env`의 실제 값은 GitHub variable/Secret, runner checkout, GHCR image와 고정 release 경로로 전송하지 않았다.
+- 공개 GHCR package를 pull하므로 Mac mini에 별도 package token을 저장하지 않았다.
+- runner 등록용 일회성 token은 명령 실행 중에만 사용하고 출력하거나 별도 파일에 기록하지 않았다.
+
+### 현재 상태와 다음 검증
+
+- `dev → main` PR #42를 생성했고 애플리케이션 검증이 통과했다.
+- PR #42 병합 시 새 main SHA image 게시 후 `rwr-mac-mini`가 최초 자동 배포를 실행한다.
+- 병합 전까지 production은 기존 main SHA를 실행하며 Cloudflare Tunnel과 Windows VM은 변경하지 않는다.
+- 다음 단계는 PR #42 병합 승인, publish/deploy job 성공 확인, 실행 image SHA 확인이다.
+- Cloudflare 연결과 Windows VM 종료는 자동 배포가 확인된 뒤 Phase 4에서 별도로 진행한다.

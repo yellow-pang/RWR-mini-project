@@ -110,3 +110,11 @@ runner는 GitHub workflow가 Mac에서 지속적으로 명령을 실행하는 �
 - 정리 대상이 RWR의 오래된 SHA release와 두 image로 제한되는지
 - workflow가 main push와 publish 성공 뒤 지정 Mac runner에서만 실행되는지
 - runtime `.env`가 복사되거나 checkout/GHCR image에 포함되지 않는지
+
+## PR #40 병합 후 보정 기록
+
+- runtime `.env`를 고정 배포 경로에 둬야 한다는 초기 전제는 PR #41에서 제거했다. 현재 배포 script는 기존 파일의 절대경로를 받으며 `.env`를 복사하지 않는다.
+- `/Users/tro/services/rwr` 고정 경로에서 기존 main SHA의 실제 pull/up과 localhost health를 완료했다.
+- 공식 macOS ARM64 runner `2.337.0`을 검증해 `rwr-mac-mini`로 등록하고 LaunchAgent 자동 시작을 구성했다.
+- runner가 `self-hosted`, `macOS`, `ARM64`, `rwr-production` 라벨로 online 상태임을 확인했다.
+- `dev → main` 승격 PR은 [#42](https://github.com/yellow-pang/RWR-mini-project/pull/42)이며 검증을 통과했다. main 병합과 최초 자동 배포는 사용자 확인 뒤 진행한다.
