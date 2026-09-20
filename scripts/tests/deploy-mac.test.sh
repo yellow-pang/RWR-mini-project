@@ -10,6 +10,8 @@ SHA_ONE=1111111111111111111111111111111111111111
 SHA_TWO=2222222222222222222222222222222222222222
 SHA_FAIL=3333333333333333333333333333333333333333
 SHA_FOUR=4444444444444444444444444444444444444444
+SHA_UP_FAIL=5555555555555555555555555555555555555555
+SHA_PULL_FAIL=6666666666666666666666666666666666666666
 DEPLOY_DIR="$TEST_ROOT/deploy"
 FAKE_BIN_DIR="$TEST_ROOT/bin"
 FAKE_STATE_DIR="$TEST_ROOT/state"
@@ -55,7 +57,15 @@ set -euo pipefail
 echo "tag=${RWR_IMAGE_TAG:-unset} $*" >> "$FAKE_STATE_DIR/docker.log"
 
 case " $* " in
+  *" pull "*)
+    if [[ "${FAKE_PULL_FAIL_TAG:-}" == "${RWR_IMAGE_TAG:-}" ]]; then
+      exit 1
+    fi
+    ;;
   *" up -d "*)
+    if [[ "${FAKE_UP_FAIL_ALL:-0}" == "1" || "${FAKE_UP_FAIL_TAG:-}" == "${RWR_IMAGE_TAG:-}" ]]; then
+      exit 1
+    fi
     printf '%s\n' "${RWR_IMAGE_TAG:-}" > "$FAKE_STATE_DIR/running-tag"
     ;;
   *" port nginx 80 "*)
@@ -152,6 +162,22 @@ run_deploy "$SHA_TWO" env
 assert_equal "$SHA_TWO" "$(cat "$DEPLOY_DIR/.current-sha")" "두 번째 배포 SHA가 기록되지 않았습니다."
 assert_equal "$SHA_ONE" "$(cat "$DEPLOY_DIR/.previous-sha")" "직전 SHA가 기록되지 않았습니다."
 
+if run_deploy "$SHA_PULL_FAIL" env FAKE_PULL_FAIL_TAG="$SHA_PULL_FAIL"; then
+  fail "image pull 실패 배포가 성공으로 끝났습니다."
+fi
+assert_equal "$SHA_TWO" "$(cat "$DEPLOY_DIR/.current-sha")" "pull 실패 후 current SHA가 변경됐습니다."
+if grep -F "tag=$SHA_PULL_FAIL" "$DOCKER_LOG" | grep -Fq " up -d"; then
+  fail "pull 실패 후 container 교체가 실행됐습니다."
+fi
+
+set +e
+up_failure_output=$(run_deploy "$SHA_UP_FAIL" env FAKE_UP_FAIL_ALL=1 2>&1)
+up_failure_status=$?
+set -e
+[[ "$up_failure_status" -ne 0 ]] || fail "container 실행과 rollback 실패가 성공으로 끝났습니다."
+[[ "$up_failure_output" == *"직전 release 복구도 실패했습니다"* ]] || fail "rollback 실패가 오류 메시지에 구분되지 않았습니다."
+assert_equal "$SHA_TWO" "$(cat "$DEPLOY_DIR/.current-sha")" "up/rollback 실패 후 current SHA가 변경됐습니다."
+
 if run_deploy "$SHA_FAIL" env FAKE_HEALTH_FAIL_TAG="$SHA_FAIL"; then
   fail "health 실패 배포가 성공으로 끝났습니다."
 fi
@@ -169,6 +195,8 @@ assert_equal "$SHA_TWO" "$(cat "$DEPLOY_DIR/.previous-sha")" "정리 후 직전 
 [[ -d "$DEPLOY_DIR/releases/$SHA_TWO" ]] || fail "직전 release가 삭제됐습니다."
 [[ ! -e "$DEPLOY_DIR/releases/$SHA_ONE" ]] || fail "두 세대 이전 release가 남았습니다."
 [[ ! -e "$DEPLOY_DIR/releases/$SHA_FAIL" ]] || fail "실패한 release가 남았습니다."
+[[ ! -e "$DEPLOY_DIR/releases/$SHA_UP_FAIL" ]] || fail "up 실패 release가 남았습니다."
+[[ ! -e "$DEPLOY_DIR/releases/$SHA_PULL_FAIL" ]] || fail "pull 실패 release가 남았습니다."
 assert_file_contains "$DOCKER_LOG" "image rm ghcr.io/yellow-pang/rwr-web:$SHA_ONE"
 assert_file_contains "$DOCKER_LOG" "image rm ghcr.io/yellow-pang/rwr-server:$SHA_ONE"
 assert_file_contains "$DOCKER_LOG" "image rm ghcr.io/yellow-pang/rwr-web:$SHA_FAIL"

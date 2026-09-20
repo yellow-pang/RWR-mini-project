@@ -137,7 +137,9 @@ rollback() {
   fi
 
   log "직전 정상 SHA $CURRENT_SHA 로 복구합니다."
-  compose_for "$CURRENT_SHA" up -d --remove-orphans
+  if ! compose_for "$CURRENT_SHA" up -d --remove-orphans; then
+    return 1
+  fi
   is_healthy "$CURRENT_SHA"
 }
 
@@ -148,8 +150,10 @@ fi
 
 log "SHA $IMAGE_SHA container를 실행합니다."
 if ! compose_for "$IMAGE_SHA" up -d --remove-orphans; then
-  rollback || true
-  fail "container 실행에 실패했습니다."
+  if rollback; then
+    fail "container 실행에 실패해 직전 정상 release로 복구했습니다."
+  fi
+  fail "container 실행에 실패했고 직전 release 복구도 실패했습니다."
 fi
 
 if ! is_healthy "$IMAGE_SHA"; then
