@@ -5,7 +5,7 @@
 - 분석 기준: `a430afe71822fe42db2732a51b298623558b7080`
 - 시작 브랜치: `dev`. 사용자 후속 지시에 따라 `chore/34-mac-mini-deployment-analysis`를 생성하고 체크아웃했다.
 - 문서 위치: `docs/34-mac-mini-deployment-analysis/`. 코드와 배포 설정은 변경하지 않았다.
-- 이번 범위는 분석과 문서 구조 준비뿐이다. Plan, 구현, 배포, Cloudflare 변경은 하지 않는다.
+- 현재 범위는 분석과 Plan 문서 작성까지다. 구현, 배포, Cloudflare 변경은 하지 않는다.
 
 ## 폴더 구조
 
@@ -19,6 +19,7 @@
 └── pr/        # 향후 PR 문서용 빈 자리
 ```
 
-[현재 배포 분석](analysis/01-current-deployment.md)
+- [현재 배포 분석](analysis/01-current-deployment.md)
+- [Mac mini 배포 전환 Master Plan](plans/plan-34-mac-mini-ghcr-deployment.md)
 
-기존 `docs/plans`, `docs/steps`, `docs/pr` 기록은 옮기거나 삭제하지 않는다. 위 하위 폴더는 사용자 요청에 따른 구조 준비이며, 실제 후속 Plan/Step/PR의 저장 위치는 기존 AGENTS.md 규칙과 함께 다음 작업에서 확정한다. 현재 `.gitkeep` 외에 후속 문서는 작성하지 않았다. 다른 프로젝트의 폴더 구조는 제공되지 않아 저장소의 기존 분류를 참고했다.
+기존 `docs/plans`, `docs/steps`, `docs/pr` 기록은 옮기거나 삭제하지 않는다. 이번 브랜치의 후속 Plan/Step/PR은 사용자 요청으로 준비한 작업별 하위 폴더에 작성한다. 현재는 Plan만 작성했고 Step/PR 문서는 구현 완료 후 추가한다. 다른 프로젝트의 폴더 구조는 제공되지 않아 저장소의 기존 분류를 참고했다.
