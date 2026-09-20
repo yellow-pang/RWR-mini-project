@@ -1,4 +1,4 @@
-# PR 준비. Mac mini GHCR pull 배포 자동화
+# PR #40. Mac mini GHCR pull 배포 자동화
 
 > 관련 계획서: [Mac mini 배포 전환 Master Plan](../plans/plan-34-mac-mini-ghcr-deployment.md)
 >
@@ -12,6 +12,8 @@
 | --- | --- |
 | 작업 브랜치 | `feat/34-mac-mini-pull-deployment` |
 | 병합 대상 | `dev` |
+| PR | [#40](https://github.com/yellow-pang/RWR-mini-project/pull/40) |
+| 상태 | Open, 자동 검증 진행 중 |
 | 범위 | 운영 Compose, 배포/rollback script, main 전용 Mac deploy job, Phase 2~3 기록 |
 
 ## PR 제목

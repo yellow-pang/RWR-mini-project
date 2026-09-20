@@ -36,6 +36,6 @@
 - [Phase 2 GitHub CI와 GHCR 이미지 게시 준비](steps/step-34-phase-2-ci-ghcr.md)
 - [Phase 3 Mac 고정 경로 pull 배포](steps/step-34-phase-3-mac-pull-deployment.md)
 - [PR #37 Mac mini 이전 검증 및 GHCR 배포 기반 구성](pr/pr-34-mac-mini-ghcr-foundation.md)
-- [Phase 3 Mac mini GHCR pull 배포 PR 준비](pr/pr-34-mac-mini-pull-deployment.md)
+- [PR #40 Mac mini GHCR pull 배포 자동화](pr/pr-34-mac-mini-pull-deployment.md)
 
 기존 `docs/plans`, `docs/steps`, `docs/pr` 기록은 옮기거나 삭제하지 않는다. 이번 브랜치의 후속 Plan/Step/PR은 사용자 요청으로 준비한 작업별 하위 폴더에 작성한다. Phase 0은 Mac Compose 재현, Phase 1은 Docker runtime 정비, Phase 2는 GitHub-hosted CI와 GHCR 게시 준비를 담당한다. Phase 2의 PR 및 `dev` 원격 실행 결과는 Step 문서의 보정 기록에 남겼고, 최초 main publish 결과도 같은 문서에 이어서 기록한다. 다른 프로젝트의 폴더 구조는 제공되지 않아 저장소의 기존 분류를 참고했다.
