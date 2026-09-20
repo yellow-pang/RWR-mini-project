@@ -384,6 +384,8 @@ Mac self-hosted runner labels: self-hosted, macOS, ARM64, rwr-production
 - PR #42의 main merge SHA `040f02d2bc90742a92633ee1468bacbfe4ed5c75`에 대해 validate, multi-platform publish, Mac 자동 deploy가 순서대로 성공했다.
 - production web/server와 PostgreSQL image가 모두 arm64로 실행되고 API/UI, DB seed 10건, current/previous 두 release 보관과 `.env` 미복사를 확인했다.
 - 실제 실패를 유도하는 rollback과 Mac 재부팅 후 복구는 운영 중단 가능성이 있어 별도 확인 뒤 수행한다.
+- Phase 0/1 검증 container와 network는 production 전환 후 제거했고 `rwr-phase0_rwr_postgres_data`, `rwr-phase1_rwr_postgres_data` volume은 복구 가능성을 위해 보존했다.
+- 같은 OrbStack에서 `health-center`, `smartdrain-mac` 프로젝트의 Mac 이전이 별도 세션에서 진행 중이다. Mac 재부팅, OrbStack 전체 재시작과 공유 Cloudflare 변경은 두 프로젝트 작업 완료 및 영향 확인 뒤 수행한다.
 
 ### 후속 개선
 

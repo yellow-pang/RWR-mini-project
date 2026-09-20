@@ -179,3 +179,29 @@ PR #42를 merge commit `040f02d2bc90742a92633ee1468bacbfe4ed5c75`로 main에 병
 이 결과로 `GitHub Actions → GHCR → Mac mini runner → OrbStack pull/up` 연결은 실제 main push에서 재현됐다. 배포 job에는 application build 명령이 없었고 runner `_work`는 checkout으로만 사용됐다.
 
 남은 Phase 3 검증은 실제 health 실패를 유도한 rollback과 Mac 재부팅 뒤 OrbStack, runner, container 복구다. 두 작업은 정상 production에 일시 영향을 줄 수 있으므로 사용자 확인 뒤 진행한다. Cloudflare Tunnel과 Windows VM은 변경하지 않았다.
+
+## 9. 검증 stack 정리와 공유 Mac 작업 조율
+
+최초 자동 배포가 통과한 뒤 검증용 Compose project를 다음과 같이 정리했다.
+
+- [x] `rwr-phase0`의 중지된 nginx/server/db container와 Compose network 제거
+- [x] `rwr-phase1`의 실행 중이던 nginx/server/db container 중지 및 제거, Compose network 제거
+- [x] `rwr-phase0_rwr_postgres_data` volume 보존
+- [x] `rwr-phase1_rwr_postgres_data` volume 보존
+- [x] `rwr-production`의 nginx/server/db와 `rwr-production-postgres-data` 유지
+- [x] 정리 후 production API health와 root UI HTTP 200 재확인
+
+`docker compose down`에는 `--volumes`를 사용하지 않았다. Phase 0/1 데이터가 운영에 필요하지 않더라도 현재 단계에서는 검증 이력과 복구 가능성을 우선해 volume과 image를 자동 삭제하지 않는다.
+
+같은 Mac mini와 OrbStack에서 다른 세션이 다음 프로젝트의 이전 작업을 진행 중이다.
+
+- `health-center`: 실행 중인 별도 Compose project
+- `smartdrain-mac`: 실행 중인 별도 Compose project
+
+RWR 작업은 이 프로젝트들의 container, network, volume과 Cloudflare 설정을 변경하지 않는다. 다음 항목은 공유 환경 영향을 확인한 뒤 이어서 진행한다.
+
+- [ ] `health-center`, `smartdrain-mac` 이전 작업 완료 여부 확인
+- [ ] 실제 RWR rollback 검증 방식과 영향 범위 확정
+- [ ] Mac 재부팅 전 두 프로젝트 담당 작업과 중단 시간 조율
+- [ ] 재부팅 후 OrbStack, 세 프로젝트, RWR runner 복구 확인
+- [ ] 공유 Cloudflare Tunnel/hostname 충돌 여부 확인 후 Phase 4 진행
