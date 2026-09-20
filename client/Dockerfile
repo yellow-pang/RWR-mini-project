@@ -1,6 +1,6 @@
 # Stage 1: React 앱 빌드
 # ※ build context는 프로젝트 루트(.)로 지정해야 nginx/nginx.conf에 접근 가능합니다.
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
