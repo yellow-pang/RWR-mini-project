@@ -479,6 +479,15 @@ Phase 1의 로컬 npm 검증은 Node runtime 변경 자체를 검증하기 위�
 - 저장소 변경이 포함된 Phase는 구현 완료 후 `pr/`에 기존 PR 문서 형식을 따른 요약을 작성한다.
 - 같은 lint/build 로그를 각 Phase 문서에 반복 복사하지 않고 담당 Phase 결과를 링크한다.
 - secret 값, `.env` 내용, Tunnel token, runner registration token은 문서에 기록하지 않는다.
+- Windows VM에서 Mac mini로 이전하는 각 Phase의 Step 문서에는 다음 항목을 남긴다.
+  - 해당 순서와 방식을 선택한 이유
+  - 에이전트 또는 GitHub Actions가 자동화한 작업
+  - 사용자가 직접 확인하거나 승인한 작업
+  - 실제 명령·workflow·화면에서 확인한 검증 근거
+  - 기존 Windows VM과 현재 운영 서비스에 미치는 영향
+  - 다음 Phase로 넘어가기 전에 남은 사용자 결정
+- GitHub Secret, GHCR package visibility, runner 등록, Cloudflare Tunnel, 최종 전환처럼 외부 상태가 필요한 작업은 자동화 범위와 사용자 결정 범위를 분리해 기록한다.
+- 작업 시점의 사실과 이후 원격 결과가 달라지면 기존 내용을 삭제하지 않고 날짜가 있는 보정 기록을 추가한다.
 
 ## 6. 제외 범위
 

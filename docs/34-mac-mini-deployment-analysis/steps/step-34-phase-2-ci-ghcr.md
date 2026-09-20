@@ -4,7 +4,7 @@
 - 브랜치: `chore/34-mac-mini-deployment-analysis`
 - 범위: GitHub-hosted CI, GHCR 멀티 아키텍처 image publish, 기존 VM workflow 자동 실행 중지
 - 로컬 판정: **구현과 정적·멀티 아키텍처 build 검증 통과**
-- 원격 판정: **확인 필요 — 아직 commit/push하지 않아 GitHub Actions와 GHCR은 실행되지 않음**
+- 원격 판정: **PR 검증 통과 — PR #37 validate 성공, publish 정상 skip. GHCR 게시는 main 반영 후 확인 필요**
 
 ## 1. 변경 목적
 
@@ -89,23 +89,91 @@ actionlint binary는 공식 release의 macOS arm64 archive를 `/private/tmp`에 
 
 두 multi-platform 검증 build는 `type=cacheonly` output을 사용했다. 따라서 amd64/arm64 build 단계는 실제 수행했지만 local registry나 GHCR에 tag 또는 manifest를 게시하지 않았다.
 
-## 6. commit/push 이후 확인할 항목
+## 6. 원격 진행 결과와 남은 확인 항목
 
 Phase 2의 최종 완료 판정에는 GitHub 외부 상태 확인이 필요하다.
 
+### 2026-09-20 PR #37 보정 기록
+
+- 작업 브랜치 `chore/34-mac-mini-deployment-analysis`를 origin에 push했다.
+- `dev`를 base로 [PR #37](https://github.com/yellow-pang/RWR-mini-project/pull/37)을 생성했다.
+- `CI and Publish / Validate application (pull_request)`이 14초에 성공했다.
+- `CI and Publish / Publish multi-platform images (pull_request)`는 조건식에 따라 정상적으로 skip됐다.
+- PR은 6 commits, 17 changed files이며 base branch와 충돌이 없다.
+- PR 생성만으로 GHCR package나 image tag는 생성되지 않았다.
+
+이 결과는 PR 검증과 image 게시를 분리한 설계가 실제 GitHub에서도 동작한다는 근거다. 코드 리뷰 단계에서 image를 매번 게시하지 않아 불필요한 registry 저장과 멀티 아키텍처 build 시간을 줄이고, 검증된 main commit만 배포 후보 image로 만든다.
+
+현재 완료된 원격 확인:
+
+1. PR에서 validate가 정확히 한 번 실행됨
+2. PR에서 publish가 정상적으로 skip됨
+
+아직 남은 원격 확인:
+
 1. repository Actions secret `VITE_KAKAO_MAP_KEY` 존재 여부와 값 갱신
-2. PR에서 validate가 정확히 한 번 실행되고 publish가 skip되는지 확인
-3. dev push에서 validate만 정확히 한 번 실행되는지 확인
-4. main push에서 validate 성공 후 publish가 실행되는지 확인
-5. `rwr-web`과 `rwr-server` package에 전체 commit SHA와 `main` tag가 생성되는지 확인
-6. 두 SHA tag manifest에 `linux/amd64`, `linux/arm64`가 모두 존재하는지 확인
-7. package visibility와 Mac mini pull 인증 방식을 Phase 3 전에 결정
+2. PR #37을 `dev`에 병합한 뒤 dev push에서 validate만 실행되는지 확인
+3. main push에서 validate 성공 후 publish가 실행되는지 확인
+4. `rwr-web`과 `rwr-server` package에 전체 commit SHA와 `main` tag가 생성되는지 확인
+5. 두 SHA tag manifest에 `linux/amd64`, `linux/arm64`가 모두 존재하는지 확인
+6. package visibility와 Mac mini pull 인증 방식을 Phase 3 전에 결정
 
 현재 Mac의 `gh` CLI에는 `yellow-pang` 계정이 선택돼 있지만 저장된 token이 유효하지 않아 Secret 이름을 원격 조회하지 못했다. 값은 조회하거나 출력하지 않았다. 원격 검증 전 `gh auth login -h github.com` 재인증 또는 GitHub 웹 설정 확인이 필요하다.
 
 위 항목이 확인되기 전에는 Phase 2를 원격 완료로 판정하거나 기존 VM workflow를 제거하지 않는다.
 
-## 7. 이번 Phase에서 제외한 항목
+## 7. Windows VM에서 Mac mini로 이전할 때 이 Phase가 필요한 이유
+
+### 기존 방식에서 생긴 운영 결합
+
+기존 배포는 Windows 노트북 안의 Linux VM에 설치한 self-hosted runner가 GitHub Actions의 `_work` checkout 디렉터리를 운영 디렉터리처럼 사용했다. main push가 발생하면 같은 머신이 소스를 받고 image를 build하고 container를 교체했다.
+
+이 구조에서는 CI 작업 공간 정리, runner 장애, host build cache와 image 누적이 곧 운영 장애 위험으로 연결된다. Apple Silicon Mac mini로 host가 바뀌면 amd64만 고려한 image가 실행되지 않을 가능성도 있다.
+
+### 이번에 build와 deploy를 먼저 분리한 이유
+
+Mac mini에 runner와 Cloudflare를 먼저 연결하면 application, image, runner, network 문제가 동시에 발생할 수 있다. 그래서 다음 순서로 위험을 분리했다.
+
+```text
+기존 Compose의 Mac arm64 재현
+→ build context와 runtime 정비
+→ GitHub에서 검증하고 multi-arch image를 만드는 경로 준비
+→ Mac mini는 검증된 image를 pull하는 배포 대상으로 전환
+→ 마지막에 Cloudflare 외부 경로 연결
+```
+
+Phase 2는 세 번째 단계다. 이 단계에서 Mac mini 운영 설정을 건드리지 않고도 CI와 image 생성 계약을 먼저 확인할 수 있다.
+
+### 자동화한 작업과 사용자가 결정하는 작업
+
+| 구분 | 작업 | 이유 |
+| --- | --- | --- |
+| 자동화 | PR/dev/main에서 server 문법, client lint/build 검증 | 동일한 검증을 개발자 PC와 서버에서 반복하지 않기 위해 |
+| 자동화 | main commit의 web/server amd64·arm64 image build | Mac mini arm64와 기존 amd64 환경 양쪽에서 같은 commit을 실행하기 위해 |
+| 자동화 | commit SHA와 main tag 부여 | 배포 버전을 고정하면서 최신 후보도 쉽게 식별하기 위해 |
+| 자동화 | PR에서는 publish skip | 리뷰 중인 commit이 registry와 운영 후보에 섞이지 않게 하기 위해 |
+| 사용자 확인 | PR #37 내용 검토와 생성 승인 | 저장소에 공식 변경 기록을 남기는 행위이기 때문에 |
+| 사용자 확인 | PR 병합과 dev→main 반영 | branch 상태와 image 게시를 실제로 변경하기 때문에 |
+| 사용자 확인 | `VITE_KAKAO_MAP_KEY` Secret 값 | 저장소 파일로 확인할 수 없는 외부 비밀값이기 때문에 |
+| 사용자 결정 | GHCR package 공개 범위와 Mac pull 인증 | 운영 접근 방식과 credential 보관 방법을 결정해야 하기 때문에 |
+
+### 기존 서비스에 미치는 현재 영향
+
+- PR #37은 아직 `dev`에 병합되지 않아 기존 branch와 운영 container를 변경하지 않았다.
+- PR 검증은 GitHub-hosted runner에서 실행됐고 기존 Windows VM runner를 사용하지 않았다.
+- GHCR publish는 실행되지 않았고 Mac mini 자동 배포도 연결되지 않았다.
+- 기존 Linux VM의 container, volume, runner, Cloudflare Tunnel은 삭제하거나 변경하지 않았다.
+- 실제 main 반영 후에는 기존 `deploy.yml`의 자동 실행이 중지되고 GHCR image publish가 새 자동 동작이 된다.
+
+### 다음 사용자 확인 지점
+
+1. PR #37을 `dev`에 병합할지 결정
+2. 병합 후 dev validate 결과를 확인
+3. main 반영 전에 `VITE_KAKAO_MAP_KEY` Secret과 Actions package 권한 확인
+4. dev를 main에 반영해 최초 GHCR image를 게시할지 결정
+5. 게시 결과를 확인한 뒤 Phase 3의 Mac mini pull/up 구현 승인
+
+## 8. 이번 Phase에서 제외한 항목
 
 - Mac mini self-hosted runner 설치와 label 설정
 - GHCR image를 사용하는 운영 Compose
