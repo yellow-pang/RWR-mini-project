@@ -13,6 +13,7 @@ SHA_FOUR=4444444444444444444444444444444444444444
 SHA_UP_FAIL=5555555555555555555555555555555555555555
 SHA_PULL_FAIL=6666666666666666666666666666666666666666
 DEPLOY_DIR="$TEST_ROOT/deploy"
+RUNTIME_ENV_FILE="$TEST_ROOT/runtime.env"
 FAKE_BIN_DIR="$TEST_ROOT/bin"
 FAKE_STATE_DIR="$TEST_ROOT/state"
 DOCKER_LOG="$FAKE_STATE_DIR/docker.log"
@@ -39,7 +40,7 @@ assert_equal() {
 
 mkdir -p "$DEPLOY_DIR" "$FAKE_BIN_DIR" "$FAKE_STATE_DIR"
 
-cat > "$DEPLOY_DIR/.env" <<'ENV'
+cat > "$RUNTIME_ENV_FILE" <<'ENV'
 NGINX_PORT=18090
 NODE_ENV=production
 CORS_ORIGIN=http://127.0.0.1:18090
@@ -141,12 +142,13 @@ run_deploy() {
   RWR_HEALTH_ATTEMPTS=1 \
   RWR_HEALTH_INTERVAL_SECONDS=0 \
   "$@" \
-  "$PROJECT_ROOT/scripts/deploy-mac.sh" "$sha" "$DEPLOY_DIR" "$PROJECT_ROOT"
+  "$PROJECT_ROOT/scripts/deploy-mac.sh" "$sha" "$DEPLOY_DIR" "$PROJECT_ROOT" "$RUNTIME_ENV_FILE"
 }
 
 run_deploy "$SHA_ONE" env
 
 assert_equal "$SHA_ONE" "$(cat "$DEPLOY_DIR/.current-sha")" "첫 배포 SHA가 기록되지 않았습니다."
+[[ ! -e "$DEPLOY_DIR/.env" ]] || fail "runtime .env가 배포 경로에 복사됐습니다."
 [[ -f "$DEPLOY_DIR/releases/$SHA_ONE/docker-compose.deploy.yml" ]] || fail "첫 release Compose가 복사되지 않았습니다."
 [[ -f "$DEPLOY_DIR/releases/$SHA_ONE/server/src/db/schema.sql" ]] || fail "schema.sql이 release에 복사되지 않았습니다."
 [[ -f "$DEPLOY_DIR/releases/$SHA_ONE/server/src/db/seed.sql" ]] || fail "seed.sql이 release에 복사되지 않았습니다."
