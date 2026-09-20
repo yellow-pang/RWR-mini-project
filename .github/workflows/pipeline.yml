@@ -1,0 +1,103 @@
+name: CI and Publish
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  push:
+    branches:
+      - dev
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate application
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Install server dependencies
+        run: npm ci --prefix server
+
+      - name: Check server syntax
+        run: find server -name '*.js' -not -path '*/node_modules/*' -print0 | xargs -0 -n1 node --check
+
+      - name: Install client dependencies
+        run: npm ci --prefix client
+
+      - name: Lint client
+        run: npm --prefix client run lint
+
+      - name: Build client
+        env:
+          VITE_KAKAO_MAP_KEY: ""
+        run: npm --prefix client run build
+
+  publish:
+    name: Publish multi-platform images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish web image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./client/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/rwr-web:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/rwr-web:main
+          build-args: |
+            VITE_KAKAO_MAP_KEY=${{ secrets.VITE_KAKAO_MAP_KEY }}
+          cache-from: type=gha,scope=rwr-web
+          cache-to: type=gha,mode=max,scope=rwr-web
+
+      - name: Build and publish server image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./server
+          file: ./server/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/rwr-server:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/rwr-server:main
+          cache-from: type=gha,scope=rwr-server
+          cache-to: type=gha,mode=max,scope=rwr-server

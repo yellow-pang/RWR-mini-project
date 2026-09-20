@@ -1,9 +1,10 @@
-name: Deploy to VM
+name: Legacy VM Deploy (manual)
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+
+# 기존 Linux VM 배포 경로를 GHCR 전환 확인 전까지 보존한다.
+# main push 자동 실행은 pipeline.yml과 충돌하지 않도록 중지했다.
 
 # ── GitHub Secrets 등록 필요 항목 ─────────────────────────────────────────────
 # Settings → Secrets and variables → Actions → New repository secret
@@ -13,7 +14,7 @@ on:
 
 jobs:
   deploy:
-    name: Build & Deploy (self-hosted)
+    name: Build & Deploy to legacy VM
     # VM에 설치한 GitHub Actions self-hosted runner에서 직접 실행
     runs-on: self-hosted
 

@@ -221,8 +221,10 @@ function MapView({
     !Number.isNaN(Number(displayLat)) &&
     !Number.isNaN(Number(displayLng));
 
-  // window.kakao 존재 여부만 확인 (autoload=false 시 kakao.maps는 load() 콜백 이후에 초기화되므로 kakao?.maps 체크 불가)
-  const [sdkFailed] = useState(() => !window.kakao);
+  // 우편번호 스크립트도 window.kakao를 만들 수 있으므로 지도 SDK의 load 계약까지 확인한다.
+  const [sdkFailed] = useState(
+    () => typeof window.kakao?.maps?.load !== "function",
+  );
 
   useEffect(() => {
     if (!hasCoords || sdkFailed) return;

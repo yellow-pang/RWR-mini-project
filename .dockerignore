@@ -1,0 +1,11 @@
+**
+!client/
+!client/**
+!nginx/
+!nginx/**
+
+client/node_modules/
+client/dist/
+client/.env
+client/.env.*
+**/.DS_Store
