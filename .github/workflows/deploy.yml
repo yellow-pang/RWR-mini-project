@@ -16,7 +16,10 @@ jobs:
   deploy:
     name: Build & Deploy to legacy VM
     # VM에 설치한 GitHub Actions self-hosted runner에서 직접 실행
-    runs-on: self-hosted
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
 
     steps:
       # ── 1. 코드 체크아웃 ─────────────────────────────────────────

@@ -79,20 +79,54 @@ compose_for() {
     "$@"
 }
 
+check_api_response() {
+  local sha=$1
+  local url=$2
+  local response_kind=$3
+
+  # Mac host의 Node 설치에 의존하지 않고 실행 중인 server 이미지로 JSON을 검사한다.
+  "$CURL_BIN" --fail --silent --show-error --connect-timeout 3 --max-time 10 \
+    --write-out '\n%{http_code}' "$url" \
+    | compose_for "$sha" exec -T server node -e '
+      const fs = require("node:fs");
+      try {
+        const response = fs.readFileSync(0, "utf8");
+        const statusOffset = response.lastIndexOf("\n");
+        const status = response.slice(statusOffset + 1);
+        const payload = JSON.parse(response.slice(0, statusOffset));
+        if (status !== "200" || payload?.success !== true) process.exit(1);
+        if (process.argv[1] === "list" && !Array.isArray(payload.data)) process.exit(1);
+      } catch {
+        process.exit(1);
+      }
+    ' "$response_kind"
+}
+
 is_healthy() {
   local sha=$1
   local published_port
   local attempt
+  local base_url
+  local ui_status
+  # 조회만 수행하는 검증용 UUID다. 사용자나 즐겨찾기/이력을 생성하지 않는다.
+  local smoke_user_id=00000000-0000-4000-8000-000000000000
 
   published_port=$(compose_for "$sha" port nginx 80 | tail -n 1)
   published_port=${published_port##*:}
   [[ "$published_port" =~ ^[0-9]+$ ]] || return 1
+  base_url="http://127.0.0.1:${published_port}"
 
   for ((attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt += 1)); do
-    if "$CURL_BIN" --fail --silent --show-error "http://127.0.0.1:${published_port}/api/health" >/dev/null \
-      && "$CURL_BIN" --fail --silent --show-error "http://127.0.0.1:${published_port}/" >/dev/null; then
+    if check_api_response "$sha" "$base_url/api/health" health \
+      && check_api_response "$sha" "$base_url/api/favorites?userId=$smoke_user_id" list \
+      && check_api_response "$sha" "$base_url/api/history?userId=$smoke_user_id&limit=1" list \
+      && ui_status=$("$CURL_BIN" --fail --silent --show-error --connect-timeout 3 --max-time 10 \
+        --output /dev/null --write-out '%{http_code}' "$base_url/") \
+      && [[ "$ui_status" == 200 ]]; then
       return 0
     fi
+
+    log "API/DB/UI 확인을 통과하지 못했습니다. ($attempt/$HEALTH_ATTEMPTS)"
 
     if ((attempt < HEALTH_ATTEMPTS)); then
       sleep "$HEALTH_INTERVAL_SECONDS"
