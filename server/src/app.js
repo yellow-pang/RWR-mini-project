@@ -5,6 +5,8 @@ const cors = require("cors");
 const helmet = require("helmet");
 const { rateLimit } = require("express-rate-limit");
 const securityConfig = require("./config/securityConfig");
+const { checkDatabaseHealth } = require("./db");
+const { createHealthHandler } = require("./controllers/healthController");
 
 const app = express();
 
@@ -31,13 +33,7 @@ app.use(
   }),
 );
 
-app.get("/api/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "RWR API Server is running",
-    timestamp: new Date().toISOString(),
-  });
-});
+app.get("/api/health", createHealthHandler(checkDatabaseHealth));
 
 const createApiRateLimiter = ({ windowMs, max }) =>
   rateLimit({
