@@ -9,7 +9,7 @@
 
 `dev → main` 병합의 CI/CD 연결을 분석한 결과, 기존 workflow `35493924836`의 validate, GHCR publish, Mac deploy가 모두 성공했고 운영 컨테이너도 main SHA `040f02d2bc90742a92633ee1468bacbfe4ed5c75`를 실행하고 있었다. 새 기능이 필요한 상태보다는 배포 순서와 성공 판정의 공백을 보완할 단계였다.
 
-사용자 요청에 따라 깨끗한 `dev`(`4d77fc4`)에서 작업 브랜치를 생성·체크아웃하고 계획 작성 후 구현했다. 로컬 검증과 원격 main 보호 설정을 완료했다. 코드는 미커밋 상태이며 새 workflow의 GitHub 실행과 신규 운영 배포는 아직 수행하지 않았다.
+사용자 요청에 따라 깨끗한 `dev`(`4d77fc4`)에서 작업 브랜치를 생성·체크아웃하고 계획 작성 후 구현했다. 로컬 검증과 원격 main 보호 설정을 완료했다. 초기 구현 보고 시에는 미커밋 상태였으며, 후속 승인에 따른 commit/push와 GitHub 검증 결과는 아래 실행 기록에 보정한다.
 
 ## 2. 배포 역행과 대기열 소실 방지
 
@@ -146,3 +146,15 @@ macOS에서는 저장소에 기재된 Windows 명령 `npm.cmd` 대신 같은 스
 - Cloudflare origin 연결, 실제 장애 rollback, Mac 재부팅 복구는 별도 운영 작업으로 남는다. 단위·모의 테스트 성공을 실제 장애 복구 완료로 기록하지 않는다.
 
 DB schema/seed, Docker Compose, 환경변수/Secret, Cloudflare는 수정하지 않았으며 commit/push/운영 배포도 수행하지 않았다.
+
+## 9. 2026.09.27 사용자 후속 승인 및 원격 PR 검증
+
+위의 미커밋 기록은 초기 구현 완료 시점 기준이다. 이후 사용자가 commit과 dev 병합을 승인했다.
+
+- 구현 커밋: `c9bf6af` (`ci: 운영 배포 순서와 DB 검증 강화`)
+- 원격 작업 브랜치 push 및 dev 대상 [PR #43](https://github.com/yellow-pang/RWR-mini-project/pull/43) 생성 완료
+- 최초 PR workflow: [36317840311](https://github.com/yellow-pang/RWR-mini-project/actions/runs/36317840311)
+- `Validate application` 성공: dependency 설치, 서버 문법/health, 배포/rollback, workflow, 최신 SHA, 클라이언트 lint/build 모두 통과
+- publish는 PR 조건에 따라 생략, 운영 배포 미실행
+
+GitHub는 `queue: max`가 포함된 새 workflow를 정상 접수했고 강화된 테스트를 실제 Ubuntu runner에서 실행했다. 최종 문서 커밋의 PR CI도 통과한 뒤 dev에 병합한다. 실제 main 게시/배포는 이 PR 검증과 구분하며 이후 main 병합에서 확인해야 한다.

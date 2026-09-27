@@ -1,4 +1,4 @@
-# PR 35. CI/CD 배포 순서와 검증 강화
+# PR #43. CI/CD 배포 순서와 검증 강화
 
 > 관련 작업 계획서: [Plan 35](../plans/plan-35-cicd-deployment-hardening.md)
 > 관련 Step 문서: [Step 35](../steps/step-35-cicd-deployment-hardening.md)
@@ -11,9 +11,9 @@
 | --- | --- |
 | 작업 브랜치 | `fix/35-cicd-deployment-hardening` |
 | 병합 대상 | `dev` |
-| 상태 | 로컬 구현·검증 완료, commit/push 및 실제 PR 생성 전 |
+| 상태 | PR 생성 및 최초 원격 CI 검증 통과 |
 
-문서의 35는 Step 번호이며 GitHub PR 번호는 아직 없다.
+파일명의 35는 Step 번호이며 실제 GitHub PR은 [#43](https://github.com/yellow-pang/RWR-mini-project/pull/43)이다.
 
 ---
 
@@ -82,3 +82,9 @@ main에는 PR·최신 상태·GitHub Actions `Validate application` 필수 검�
 - main 병합 후 새 workflow의 GHCR 게시·Mac 배포 결과를 확인한다.
 - 실제 장애 rollback, 재부팅 복구, Cloudflare origin 확인은 별도 운영 검증이다.
 - 기존 DB 마이그레이션은 이번 변경에 포함하지 않는다. schema/seed, Compose, `.env`/Secret은 유지한다.
+
+## 2026.09.27 PR 실행 기록
+
+사용자 후속 승인으로 구현 커밋 `c9bf6af`를 작업 브랜치에 push하고 dev 대상 PR #43을 생성했다. [최초 PR workflow](https://github.com/yellow-pang/RWR-mini-project/actions/runs/36317840311)의 `Validate application`이 성공했다. 서버 health·배포/rollback·workflow·최신 SHA 테스트와 클라이언트 lint/build를 실제 GitHub-hosted Ubuntu runner에서 모두 통과했다. 이미지 publish는 PR 조건에 따라 생략됐다.
+
+이 문서 보정 커밋의 최종 PR CI까지 확인한 뒤 승인된 dev 병합을 진행한다. main 병합과 운영 배포는 수행하지 않는다.
