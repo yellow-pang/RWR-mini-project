@@ -400,6 +400,31 @@ rwr-project/
 
 ## 6. 배포 인프라
 
+### 2026.09.27 Step 35 배포 구조 보정
+
+이 절 아래의 Ubuntu VM·SSH·`latest` 설명은 초기 설계 기록이다. 현재 실행 기준은 다음과 같다.
+
+```text
+PR / dev push → GitHub-hosted validate
+main push → validate → GHCR SHA 이미지 게시 → Mac mini 배포
+  → 배포 직렬화 → 원격 main 최신 SHA 비교 → 고정 경로 pull/up
+  → DB health + 즐겨찾기/이력 GET + UI 확인 → current/previous 기록
+```
+
+- 현재 runtime은 Node.js 24이며 클라이언트는 React 19·Vite 8이다. 실제 설치 버전은 package/lockfile을 따른다.
+- `pipeline.yml`의 validate는 서버 문법, health 단위 테스트, 배포/rollback 모의 테스트, workflow/최신 SHA 계약, 클라이언트 lint/build를 검사한다.
+- publish는 `linux/amd64,linux/arm64` web/server 이미지를 전체 commit SHA와 보조 `main` 태그로 게시한다. 운영 배포는 항상 SHA 태그를 사용한다.
+- deploy는 `self-hosted, macOS, ARM64, rwr-production` runner와 `production` environment를 사용한다. concurrency group으로 배포를 직렬화하며 이미 진행 중인 배포는 새 push 때문에 취소하지 않는다.
+- 직렬화만으로 오래된 workflow의 뒤늦은 배포를 막을 수 없으므로, 배포 직전 `git ls-remote`로 원격 main SHA를 확인한다. 오래된 SHA는 생략하고 조회 오류는 실패 처리한다.
+- Mac에서 이미지를 build하지 않는다. `RWR_DEPLOY_DIR`에 release를 두고 `RWR_ENV_FILE`의 기존 `.env`를 직접 읽는다. DB 볼륨 이름은 `rwr-production-postgres-data`다.
+- `/api/health`는 DB 연결과 필수 테이블 조회 가능 여부를 검사하며 실패 시 일반적인 503 응답을 반환한다. 배포 스크립트는 즐겨찾기·이력의 실제 GET API도 확인한다. 빈 목록은 정상이며 SQL을 변경하거나 데이터를 쓰지 않는다.
+- HTTP 요청은 연결 3초·전체 10초로 제한하고 HTTP 상태와 JSON 형식을 검사한다. up/검증 실패 시 직전 SHA/Compose로 복구를 시도한다. DB 데이터나 스키마를 되돌리는 rollback은 아니다.
+- `schema.sql`·`seed.sql` mount는 새 DB 초기화에만 적용된다. 기존 DB 마이그레이션은 별도 계획이 필요하다.
+- `deploy.yml`은 Linux/X64 VM에만 배정되는 수동 fallback이며, Mac 자동 배포와 다른 경로다.
+- 외부 HTTPS가 Mac origin으로 연결되는지, 실제 장애 rollback, Mac 재부팅 후 복구는 로컬 모의 테스트와 구분해 운영 환경에서 확인해야 한다.
+
+상세 검증과 main 브랜치 보호 설정 결과는 [Step 35](./steps/step-35-cicd-deployment-hardening.md)를 따른다.
+
 ### 배포 환경 비교
 
 | 구분            | 개발 환경                  | 운영 환경 (Ubuntu VM)                              |

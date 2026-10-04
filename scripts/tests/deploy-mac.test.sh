@@ -12,6 +12,7 @@ SHA_FAIL=3333333333333333333333333333333333333333
 SHA_FOUR=4444444444444444444444444444444444444444
 SHA_UP_FAIL=5555555555555555555555555555555555555555
 SHA_PULL_FAIL=6666666666666666666666666666666666666666
+SHA_RESPONSE_FAIL=7777777777777777777777777777777777777777
 DEPLOY_DIR="$TEST_ROOT/deploy"
 RUNTIME_ENV_FILE="$TEST_ROOT/runtime.env"
 FAKE_BIN_DIR="$TEST_ROOT/bin"
@@ -72,6 +73,11 @@ case " $* " in
   *" port nginx 80 "*)
     echo "127.0.0.1:18090"
     ;;
+  *" exec -T server node -e "*)
+    # 실제 응답 파서는 실행하고 container 접속만 대체한다.
+    while [[ "$1" != node ]]; do shift; done
+    exec "$@"
+    ;;
 esac
 FAKE_DOCKER
 
@@ -80,11 +86,30 @@ cat > "$FAKE_BIN_DIR/curl" <<'FAKE_CURL'
 set -euo pipefail
 
 running_tag=$(cat "$FAKE_STATE_DIR/running-tag")
+echo "tag=$running_tag $*" >> "$FAKE_STATE_DIR/curl.log"
 if [[ -n "${FAKE_HEALTH_FAIL_TAG:-}" && "$running_tag" == "$FAKE_HEALTH_FAIL_TAG" ]]; then
   exit 22
 fi
 
-printf '{"success":true}\n'
+url=${!#}
+if [[ "${FAKE_RESPONSE_FAIL_TAG:-}" == "$running_tag" ]]; then
+  case "${FAKE_RESPONSE_MODE:-}:$url" in
+    false:*'/api/health') printf '{"success":false}\n200'; exit 0 ;;
+    html:*'/api/health') printf '<html>SPA fallback</html>\n200'; exit 0 ;;
+    redirect:*'/api/health') printf '{"success":true}\n302'; exit 0 ;;
+    list:*'/api/favorites?'*) printf '{"success":true,"data":{}}\n200'; exit 0 ;;
+    history:*'/api/history?'*) printf '{"success":false}\n200'; exit 0 ;;
+    timeout:*'/api/history?'*) exit 28 ;;
+    ui:*':18090/') printf '302'; exit 0 ;;
+  esac
+fi
+
+case "$url" in
+  */api/health) printf '{"success":true}\n200' ;;
+  */api/favorites\?*|*/api/history\?*) printf '{"success":true,"data":[]}\n200' ;;
+  */) printf '200' ;;
+  *) exit 1 ;;
+esac
 FAKE_CURL
 
 chmod +x "$FAKE_BIN_DIR/docker" "$FAKE_BIN_DIR/curl"
@@ -155,6 +180,9 @@ assert_equal "$SHA_ONE" "$(cat "$DEPLOY_DIR/.current-sha")" "첫 배포 SHA가 �
 assert_file_contains "$DOCKER_LOG" "tag=$SHA_ONE"
 assert_file_contains "$DOCKER_LOG" " pull"
 assert_file_contains "$DOCKER_LOG" " up -d"
+assert_file_contains "$FAKE_STATE_DIR/curl.log" "--connect-timeout 3 --max-time 10"
+assert_file_contains "$FAKE_STATE_DIR/curl.log" "/api/favorites?userId=00000000-0000-4000-8000-000000000000"
+assert_file_contains "$FAKE_STATE_DIR/curl.log" "/api/history?userId=00000000-0000-4000-8000-000000000000&limit=1"
 if grep -Fq -- " build" "$DOCKER_LOG"; then
   fail "배포 중 Docker build가 실행됐습니다."
 fi
@@ -171,6 +199,12 @@ assert_equal "$SHA_TWO" "$(cat "$DEPLOY_DIR/.current-sha")" "pull 실패 후 cur
 if grep -F "tag=$SHA_PULL_FAIL" "$DOCKER_LOG" | grep -Fq " up -d"; then
   fail "pull 실패 후 container 교체가 실행됐습니다."
 fi
+
+if run_deploy "$SHA_UP_FAIL" env FAKE_UP_FAIL_TAG="$SHA_UP_FAIL"; then
+  fail "container 실행 실패 배포가 성공으로 끝났습니다."
+fi
+assert_equal "$SHA_TWO" "$(cat "$DEPLOY_DIR/.current-sha")" "up 실패 후 current SHA가 변경됐습니다."
+assert_equal "$SHA_TWO" "$(cat "$FAKE_STATE_DIR/running-tag")" "up 실패 후 직전 SHA로 복구되지 않았습니다."
 
 set +e
 up_failure_output=$(run_deploy "$SHA_UP_FAIL" env FAKE_UP_FAIL_ALL=1 2>&1)
@@ -189,6 +223,15 @@ assert_equal "$SHA_TWO" "$(cat "$FAKE_STATE_DIR/running-tag")" "rollback이 직�
 assert_file_contains "$DOCKER_LOG" "tag=$SHA_FAIL"
 assert_file_contains "$DOCKER_LOG" "tag=$SHA_TWO"
 
+# HTTP 200만 반환하는 가짜 성공, SPA fallback, 잘못된 목록, timeout을 모두 거부한다.
+for response_mode in false html redirect list history timeout ui; do
+  if run_deploy "$SHA_RESPONSE_FAIL" env FAKE_RESPONSE_FAIL_TAG="$SHA_RESPONSE_FAIL" FAKE_RESPONSE_MODE="$response_mode"; then
+    fail "$response_mode 응답을 정상 배포로 처리했습니다."
+  fi
+  assert_equal "$SHA_TWO" "$(cat "$DEPLOY_DIR/.current-sha")" "$response_mode 실패 후 current SHA가 변경됐습니다."
+  assert_equal "$SHA_TWO" "$(cat "$FAKE_STATE_DIR/running-tag")" "$response_mode 실패 후 직전 SHA로 복구되지 않았습니다."
+done
+
 run_deploy "$SHA_FOUR" env
 
 assert_equal "$SHA_FOUR" "$(cat "$DEPLOY_DIR/.current-sha")" "정리 검증 배포 SHA가 기록되지 않았습니다."
@@ -199,6 +242,7 @@ assert_equal "$SHA_TWO" "$(cat "$DEPLOY_DIR/.previous-sha")" "정리 후 직전 
 [[ ! -e "$DEPLOY_DIR/releases/$SHA_FAIL" ]] || fail "실패한 release가 남았습니다."
 [[ ! -e "$DEPLOY_DIR/releases/$SHA_UP_FAIL" ]] || fail "up 실패 release가 남았습니다."
 [[ ! -e "$DEPLOY_DIR/releases/$SHA_PULL_FAIL" ]] || fail "pull 실패 release가 남았습니다."
+[[ ! -e "$DEPLOY_DIR/releases/$SHA_RESPONSE_FAIL" ]] || fail "응답 검사 실패 release가 남았습니다."
 assert_file_contains "$DOCKER_LOG" "image rm ghcr.io/yellow-pang/rwr-web:$SHA_ONE"
 assert_file_contains "$DOCKER_LOG" "image rm ghcr.io/yellow-pang/rwr-server:$SHA_ONE"
 assert_file_contains "$DOCKER_LOG" "image rm ghcr.io/yellow-pang/rwr-web:$SHA_FAIL"

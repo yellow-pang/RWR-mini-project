@@ -1,5 +1,6 @@
 const { Pool } = require("pg");
 const { getRequiredEnv } = require("../config/env");
+const { createDatabaseHealthCheck } = require("../services/healthService");
 
 const databaseUrl = getRequiredEnv("DATABASE_URL");
 let databasePassword;
@@ -30,4 +31,6 @@ pool.on("error", (err) => {
  */
 const query = (text, params) => pool.query(text, params);
 
-module.exports = { query };
+const checkDatabaseHealth = createDatabaseHealthCheck(databaseUrl);
+
+module.exports = { query, checkDatabaseHealth };

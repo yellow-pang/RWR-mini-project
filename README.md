@@ -66,6 +66,8 @@ graph LR
 
 ## 기술 스택
 
+> 2026.09.27 Step 35 보정: 현재 클라이언트는 React 19·Vite 8, 서버와 CI/Docker runtime은 Node.js 24를 사용한다. 아래 초기 기술 스택 표는 기획 당시 기록이며 실제 설치 버전은 각 `package.json`과 lockfile을 기준으로 한다.
+
 | 분류         | 기술                               |
 | ------------ | ---------------------------------- |
 | 프론트엔드   | React 18 + Vite 5 (포트 5173)      |
@@ -76,6 +78,16 @@ graph LR
 | CI/CD        | GitHub Actions                     |
 | 언어         | JavaScript (ES6+)                  |
 | 버전 관리    | Git + GitHub                       |
+
+### 2026.09.27 CI/CD 운영 보정
+
+- PR과 `dev` push: 서버 문법·health 테스트, 배포/rollback 모의 테스트, workflow 계약 검사, 클라이언트 lint/build를 실행한다.
+- `main` push: 검증 성공 후 GHCR에 web/server의 amd64·arm64 이미지를 게시하고 Mac mini가 동일 commit SHA를 pull/up한다.
+- Mac 배포는 한 번에 하나만 실행한다. 배포 직전 원격 `main`과 다른 SHA는 생략하고 조회 오류는 실패로 처리한다.
+- 배포 완료 조건은 DB를 확인하는 `/api/health`, 즐겨찾기·이력 GET의 정상 JSON, 루트 화면의 HTTP 200이다. GET 검증은 데이터를 추가하거나 삭제하지 않는다.
+- runtime `.env`는 `RWR_ENV_FILE`이 가리키는 기존 파일을 참조하고 운영 경로는 `RWR_DEPLOY_DIR`로 고정한다. frontend 이미지 빌드에는 `VITE_KAKAO_MAP_KEY` Secret을 사용한다.
+- 기존 `deploy.yml`은 Linux/X64 VM용 수동 배포다. 자동 배포 기준은 `.github/workflows/pipeline.yml`과 `docker-compose.deploy.yml`이다.
+- 자세한 구현·검증·main 보호 설정은 [Step 35](docs/steps/step-35-cicd-deployment-hardening.md)를 참고한다. 새 workflow의 원격 실행은 사용자 commit/push 후 확인한다.
 
 ---
 
