@@ -10,6 +10,8 @@
 거리·소요 시간·운동 유형을 선택하면 동네 산책/러닝 코스를 **랜덤으로 추천**해주는 반응형 웹 서비스입니다.  
 앱 설치 없이 모바일 브라우저에서 30초 안에 오늘의 운동 코스를 정할 수 있습니다.
 
+> 2026.10.04 Step 36 보정: 현재는 실제 사용자를 모집해 서비스를 운영하는 단계가 아니며, 구현·배포 경험을 링크로 보여주는 포트폴리오 데모로 공개한다. 초기 개인 사용·서비스 확장 기획과 현재 공개 목적을 구분한다.
+
 ---
 
 ## UI 미리보기
@@ -88,6 +90,12 @@ graph LR
 - runtime `.env`는 `RWR_ENV_FILE`이 가리키는 기존 파일을 참조하고 운영 경로는 `RWR_DEPLOY_DIR`로 고정한다. frontend 이미지 빌드에는 `VITE_KAKAO_MAP_KEY` Secret을 사용한다.
 - 기존 `deploy.yml`은 Linux/X64 VM용 수동 배포다. 자동 배포 기준은 `.github/workflows/pipeline.yml`과 `docker-compose.deploy.yml`이다.
 - 자세한 구현·검증·main 보호 설정은 [Step 35](docs/steps/step-35-cicd-deployment-hardening.md)를 참고한다. 새 workflow의 원격 실행은 사용자 commit/push 후 확인한다.
+
+### 2026.10.04 공개 이미지 보안 점검과 유지 결정
+
+GHCR의 공개 SHA 버전 3개에 대해 web/server의 amd64·arm64 이미지, 55개 고유 레이어, 공개 빌드 메타데이터와 게시 로그를 검사했다. 운영 API 키·DB 비밀번호·환경변수 파일·사용자 데이터 덤프는 검사 범위에서 발견되지 않았다. 브라우저용 Kakao JavaScript 키는 HTML과 빌드 메타데이터에 공개되며 서버용 REST 키와 구분한다.
+
+현재 포트폴리오 목적에 따라 공개 배포를 유지한다. 서버 root 실행, 넓은 `COPY . .` 범위, 민감파일 제외 규칙 등은 미구현 보완 항목으로 기록했다. 점검 이유, 결과, 즉시 수정하지 않은 판단과 향후 수정·검증 기준은 [Step 36](docs/steps/step-36-public-image-security-review.md)을 참고한다. 이 결정은 실제 서비스 운영을 위한 보안 승인이나 취약점이 없다는 보증은 아니다.
 
 ---
 
