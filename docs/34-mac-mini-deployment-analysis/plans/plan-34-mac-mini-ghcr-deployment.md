@@ -380,7 +380,12 @@ Mac self-hosted runner labels: self-hosted, macOS, ARM64, rwr-production
 - 운영 Compose와 script 계약 테스트, 실제 SHA image의 OrbStack arm64 pull/up, 새 DB 초기화, API/UI 검증이 통과했다.
 - repository variable `RWR_DEPLOY_DIR`과 GitHub Environment `production`을 생성했다.
 - `.env` 복사는 필수 조건이 아니므로 기존 파일을 직접 참조하는 `RWR_ENV_FILE` 입력으로 보정했다. 비밀값은 GitHub variable에 저장하지 않는다.
-- 고정 운영 경로, self-hosted runner, main 자동 배포는 저장소 구현 검토 후 적용한다.
+- `/Users/tro/services/rwr` 고정 운영 경로와 macOS LaunchAgent 기반 `rwr-mac-mini` runner를 구성했다.
+- PR #42의 main merge SHA `040f02d2bc90742a92633ee1468bacbfe4ed5c75`에 대해 validate, multi-platform publish, Mac 자동 deploy가 순서대로 성공했다.
+- production web/server와 PostgreSQL image가 모두 arm64로 실행되고 API/UI, DB seed 10건, current/previous 두 release 보관과 `.env` 미복사를 확인했다.
+- 실제 실패를 유도하는 rollback과 Mac 재부팅 후 복구는 운영 중단 가능성이 있어 별도 확인 뒤 수행한다.
+- Phase 0/1 검증 container와 network는 production 전환 후 제거했고 `rwr-phase0_rwr_postgres_data`, `rwr-phase1_rwr_postgres_data` volume은 복구 가능성을 위해 보존했다.
+- 같은 OrbStack에서 `health-center`, `smartdrain-mac` 프로젝트의 Mac 이전이 별도 세션에서 진행 중이다. Mac 재부팅, OrbStack 전체 재시작과 공유 Cloudflare 변경은 두 프로젝트 작업 완료 및 영향 확인 뒤 수행한다.
 
 ### 후속 개선
 
@@ -428,6 +433,33 @@ Phase 3이 localhost에서 안정적으로 동작한 뒤 별도 승인으로 진
 - 기존 VM에서 다른 프로젝트가 공유하는 runner, Tunnel, Docker resource는 삭제하지 않는다.
 
 저장소 변경은 Step/PR/운영 문서 보정이 중심이며 Cloudflare token이나 credential은 저장하지 않는다.
+
+### 세 프로젝트 공통 Cloudflare 조율 기준
+
+2026-09-20 확인 시 Health Center의 공통 운영 문서는 `Mac host cloudflared 1개 + remotely-managed Tunnel 1개 + 프로젝트별 localhost route`를 확정 방향으로 기록하고 있다. RWR은 이 공통 기준을 따르며 별도 Tunnel을 먼저 만들지 않는다.
+
+| 선택지 | 장점 | 단점과 적용 판단 |
+| --- | --- | --- |
+| Mac host Tunnel 1개 | 서비스·token·재부팅 검증 지점이 하나이며 현재 포트 구조와 일치 | Tunnel 설정 변경 영향이 세 프로젝트에 걸리므로 변경 담당 세션을 하나로 제한. **현재 권장** |
+| 프로젝트별 Tunnel | 변경과 장애 범위를 프로젝트별 격리 | service/token/route와 복구 절차가 세 벌로 늘어 개인 서버 규모에는 운영 부담이 큼 |
+| 프로젝트 Compose 안에 cloudflared 각각 실행 | 앱 stack과 connector lifecycle을 함께 관리 | OrbStack 자체가 중지되면 모든 connector도 사라지고 token 전달·container 관리가 중복됨 |
+| 기존 VM Tunnel의 Mac replica | 새 hostname 없이 빠르게 연결 가능해 보임 | 서로 다른 DB를 가진 VM과 Mac으로 요청이 분산될 수 있어 사용하지 않음 |
+| 공통 reverse proxy 뒤 Tunnel route 축소 | 중앙에서 hostname routing을 통제 가능 | 공유 proxy라는 추가 장애 지점과 설정 저장소가 생기므로 현재 세 프로젝트에는 불필요 |
+
+공통 Tunnel 변경은 Health Center의 공통 운영 전환 세션을 단일 소유자로 둔다. RWR 세션은 Cloudflare Dashboard, Tunnel service와 다른 프로젝트 route를 동시에 수정하지 않는다.
+
+RWR이 인계할 origin 계약은 다음과 같다.
+
+- project: `rwr-production`
+- service URL: `http://127.0.0.1:8090`
+- health path: `/api/health`
+- UI path: `/`
+- host publish: nginx만 loopback, server/DB publish 없음
+- 임시 hostname 제안: `mac-rwr.healthq.store`
+- 운영 hostname: `rwr.healthq.store`
+- rollback: 기존 VM hostname route를 유지하고 Mac 임시 hostname 검증 뒤 프로젝트별로 전환
+
+Cloudflare 공식 문서상 한 Tunnel에 여러 published application route를 둘 수 있다. route마다 public hostname과 localhost service를 연결하며 DNS record도 hostname별로 생성된다. remotely-managed Tunnel은 Dashboard가 제공하는 token 기반 service 설치 절차를 사용하고 locally-managed `config.yml` 방식과 혼용하지 않는다. token은 저장소, 문서와 명령 출력에 기록하지 않는다.
 
 ### 후속 개선
 

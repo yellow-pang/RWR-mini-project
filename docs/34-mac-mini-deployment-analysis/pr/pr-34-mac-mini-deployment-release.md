@@ -11,8 +11,9 @@
 | 기준 브랜치 | `dev` |
 | 병합 대상 | `main` |
 | PR | [#42](https://github.com/yellow-pang/RWR-mini-project/pull/42) |
-| 현재 상태 | 검증 통과, 사용자 병합 확인 대기 |
-| 운영 영향 | 병합 후 새 main SHA의 GHCR 게시와 Mac mini 자동 배포 시작 |
+| 현재 상태 | main 병합 및 최초 Mac 자동 배포 성공 |
+| merge commit | `040f02d2bc90742a92633ee1468bacbfe4ed5c75` |
+| 운영 영향 | GHCR 게시 뒤 Mac mini가 같은 SHA image를 자동 pull/up |
 
 ## 배경
 
@@ -59,3 +60,16 @@ Cloudflare Tunnel과 기존 Windows VM은 이 PR에서 변경하지 않는다. M
 - `/Users/tro/services/rwr`에 `.env`가 복사되지 않음
 
 이 확인이 끝난 뒤 Phase 4 Cloudflare Tunnel 전환을 시작한다.
+
+## 병합 및 자동 배포 결과
+
+- PR #42를 main에 merge commit 방식으로 병합했다.
+- workflow [35493924836](https://github.com/yellow-pang/RWR-mini-project/actions/runs/35493924836)의 validate, multi-platform publish, Mac deploy가 모두 성공했다.
+- production current SHA와 web/server image tag가 merge commit과 일치한다.
+- 기존 main SHA는 previous release와 image로 남아 rollback 한 세대를 보장한다.
+- web, server, PostgreSQL은 모두 OrbStack에서 arm64 image로 실행된다.
+- API health와 root UI가 정상이고 PostgreSQL seed 10건과 테이블이 유지된다.
+- 고정 배포 경로에 `.env` 사본이 없으며 기존 runtime 파일을 계속 직접 참조한다.
+- Cloudflare Tunnel과 기존 Windows VM은 변경하지 않았다.
+
+Phase 3의 실제 자동 배포 연결은 완료됐다. 정상 production에 실패를 유도하는 rollback 검증과 Mac 재부팅 복구 확인은 별도 사용자 확인이 필요한 운영 검증으로 남긴다.

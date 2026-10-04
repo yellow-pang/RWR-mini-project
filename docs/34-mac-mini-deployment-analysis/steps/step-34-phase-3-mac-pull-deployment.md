@@ -4,7 +4,7 @@
 - 브랜치: `feat/34-mac-mini-pull-deployment`
 - 범위: GHCR SHA image 전용 Compose, 고정 경로 배포 및 rollback script, main 전용 Mac deploy job
 - 구현 판정: **저장소 구현 및 실제 OrbStack pull/up 검증 통과**
-- 자동화 판정: **대기 — Mac self-hosted runner 등록과 고정 운영 경로 전환 필요**
+- 자동화 판정: **main 최초 자동 배포 통과 — 실제 실패 rollback과 Mac 재부팅 복구 검증 필요**
 
 ## 1. 이 Phase가 필요한 이유
 
@@ -150,3 +150,109 @@ Phase 3 구현을 `dev`에 병합한 뒤 Mac mini의 실제 운영 경로와 run
 - 병합 전까지 production은 기존 main SHA를 실행하며 Cloudflare Tunnel과 Windows VM은 변경하지 않는다.
 - 다음 단계는 PR #42 병합 승인, publish/deploy job 성공 확인, 실행 image SHA 확인이다.
 - Cloudflare 연결과 Windows VM 종료는 자동 배포가 확인된 뒤 Phase 4에서 별도로 진행한다.
+
+## 8. PR #42 main 최초 자동 배포 결과
+
+PR #42를 merge commit `040f02d2bc90742a92633ee1468bacbfe4ed5c75`로 main에 병합했다. GitHub Actions workflow [35493924836](https://github.com/yellow-pang/RWR-mini-project/actions/runs/35493924836)이 다음 순서로 모두 성공했다.
+
+| Job | 결과 | 실행 위치 |
+| --- | --- | --- |
+| Validate application | 성공, 17초 | GitHub-hosted Ubuntu runner |
+| Publish multi-platform images | 성공, 30초 | GitHub-hosted Ubuntu runner |
+| Deploy published SHA on Mac mini | 성공, 41초 | `rwr-mac-mini` self-hosted runner |
+
+자동 배포 후 실제 Mac 상태는 다음과 같다.
+
+| 확인 항목 | 결과 |
+| --- | --- |
+| current SHA | `040f02d2bc90742a92633ee1468bacbfe4ed5c75` |
+| previous SHA | `8d244f8cf0497b4db26d38b46cfead62b57dac6c` |
+| 보관 release | current와 previous 두 디렉터리 |
+| web/server 실행 tag | main merge SHA와 일치 |
+| image architecture | web, server, PostgreSQL 모두 `arm64` |
+| 공개 host port | nginx `127.0.0.1:8090`만 공개 |
+| API/UI | `/api/health` 정상, root UI HTTP 200 |
+| PostgreSQL | healthy, seed course 10건, favorites/history 테이블 유지 |
+| runtime `.env` | 기존 경로 직접 참조, 고정 배포 경로에 사본 없음 |
+| runner | online, job 종료 후 idle |
+
+이 결과로 `GitHub Actions → GHCR → Mac mini runner → OrbStack pull/up` 연결은 실제 main push에서 재현됐다. 배포 job에는 application build 명령이 없었고 runner `_work`는 checkout으로만 사용됐다.
+
+남은 Phase 3 검증은 실제 health 실패를 유도한 rollback과 Mac 재부팅 뒤 OrbStack, runner, container 복구다. 두 작업은 정상 production에 일시 영향을 줄 수 있으므로 사용자 확인 뒤 진행한다. Cloudflare Tunnel과 Windows VM은 변경하지 않았다.
+
+## 9. 검증 stack 정리와 공유 Mac 작업 조율
+
+최초 자동 배포가 통과한 뒤 검증용 Compose project를 다음과 같이 정리했다.
+
+- [x] `rwr-phase0`의 중지된 nginx/server/db container와 Compose network 제거
+- [x] `rwr-phase1`의 실행 중이던 nginx/server/db container 중지 및 제거, Compose network 제거
+- [x] `rwr-phase0_rwr_postgres_data` volume 보존
+- [x] `rwr-phase1_rwr_postgres_data` volume 보존
+- [x] `rwr-production`의 nginx/server/db와 `rwr-production-postgres-data` 유지
+- [x] 정리 후 production API health와 root UI HTTP 200 재확인
+
+`docker compose down`에는 `--volumes`를 사용하지 않았다. Phase 0/1 데이터가 운영에 필요하지 않더라도 현재 단계에서는 검증 이력과 복구 가능성을 우선해 volume과 image를 자동 삭제하지 않는다.
+
+같은 Mac mini와 OrbStack에서 다른 세션이 다음 프로젝트의 이전 작업을 진행 중이다.
+
+- `health-center`: 실행 중인 별도 Compose project
+- `smartdrain-mac`: 실행 중인 별도 Compose project
+
+RWR 작업은 이 프로젝트들의 container, network, volume과 Cloudflare 설정을 변경하지 않는다. 다음 항목은 공유 환경 영향을 확인한 뒤 이어서 진행한다.
+
+- [ ] `health-center`, `smartdrain-mac` 이전 작업 완료 여부 확인
+- [ ] 실제 RWR rollback 검증 방식과 영향 범위 확정
+- [ ] Mac 재부팅 전 두 프로젝트 담당 작업과 중단 시간 조율
+- [ ] 재부팅 후 OrbStack, 세 프로젝트, RWR runner 복구 확인
+- [ ] 공유 Cloudflare Tunnel/hostname 충돌 여부 확인 후 Phase 4 진행
+
+## 10. 다른 세션 Cloudflare 작업 인계 확인
+
+2026-09-20 읽기 전용으로 다른 두 저장소와 Mac host 상태를 확인했다. 파일, container와 Cloudflare 설정은 변경하지 않았다.
+
+| 대상 | 확인 상태 | RWR 판단 |
+| --- | --- | --- |
+| Health Center | `docs/mac-orbstack-deployment-analysis`, HEAD `5c3ea17`, 작업 트리 clean | 공통 Tunnel 설계와 변경 소유권을 가진 조율 세션으로 사용 |
+| SmartDrain | `chore/macos-orbstack-migration`, HEAD `4e69a31`, Step/nginx 변경 진행 중 | 다른 세션 작업이므로 파일·container·route를 수정하지 않음 |
+| Mac cloudflared | binary `2026.9.1` 설치, service/LaunchAgent와 `~/.cloudflared` 설정 없음 | Tunnel connector는 아직 실제 서비스 등록 전 단계 |
+
+현재 localhost origin은 서로 충돌하지 않는다.
+
+| 프로젝트 | 외부 공개용 origin | 상태 |
+| --- | --- | --- |
+| Health Center frontend | `http://127.0.0.1:3000` | 실행 중 |
+| Health Center backend | `http://127.0.0.1:8080` | 실행 중 |
+| RWR | `http://127.0.0.1:8090` | production 자동 배포 완료 |
+| SmartDrain | `http://127.0.0.1:8099` | localhost E2E 완료, Cloudflare 전환 전 |
+
+### 권장 공동 작업 순서
+
+1. Health Center 공통 운영 세션을 Cloudflare 변경의 단일 소유자로 유지한다.
+2. SmartDrain 세션이 현재 nginx/Step 변경을 커밋하고 localhost Gate C 상태를 확정한다.
+3. 공통 세션에서 새 Mac 전용 remotely-managed Tunnel 하나를 만들거나 기존 생성 여부를 재확인한다.
+4. host cloudflared를 Dashboard가 제공한 token 방식으로 서비스 등록하고 connector가 Healthy인지 확인한다.
+5. 운영 hostname을 옮기기 전에 프로젝트별 한 단계 임시 hostname을 각 localhost origin에 연결한다.
+6. RWR은 임시 hostname에서 UI, `/api/health`, 코스 생성, 즐겨찾기와 브라우저 CORS/지도 도메인을 검증한다.
+7. Health Center frontend/backend는 한 쌍으로, RWR과 SmartDrain은 각각 독립적으로 운영 hostname을 전환한다.
+8. 문제가 생긴 프로젝트 route만 기존 VM Tunnel로 되돌리고 다른 프로젝트 route는 유지한다.
+9. 세 세션의 변경·검증 기록이 모두 커밋된 뒤 한 번의 Mac 재부팅으로 OrbStack, 세 Compose project, runner와 cloudflared 복구를 공동 검증한다.
+10. 관찰 기간과 데이터 보존을 확인한 뒤에만 기존 VM/Tunnel 정리를 별도 승인으로 진행한다.
+
+### 현재 체크포인트
+
+- [x] RWR production localhost origin과 health 계약 인계 가능
+- [x] RWR Phase 0/1 검증 container 제거, production만 유지
+- [x] 프로젝트별 localhost port 충돌 없음
+- [x] 기존 VM Tunnel replica를 사용하지 않는 기준 확인
+- [ ] SmartDrain 현재 변경 커밋 및 Gate C 인계 완료
+- [ ] 공통 세션에서 실제 Tunnel/DNS/Access 현황 재확인
+- [ ] Mac host cloudflared service 등록
+- [ ] 프로젝트별 임시 hostname 검증
+- [ ] 프로젝트별 운영 hostname 전환
+- [ ] 공동 재부팅 복구 검증
+
+참고한 공식 문서:
+
+- [Cloudflare Tunnel routing과 다중 published application](https://developers.cloudflare.com/tunnel/concepts/routing/)
+- [Remotely-managed Tunnel 생성](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/get-started/create-remote-tunnel/)
+- [macOS service 실행 방식](https://developers.cloudflare.com/tunnel/features/locally-managed-tunnels/as-a-service/macos/)

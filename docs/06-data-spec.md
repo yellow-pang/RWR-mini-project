@@ -746,4 +746,16 @@ flowchart TD
 
 ---
 
+## 2026.09.27 Step 35 보정 기록: 서버 health 응답
+
+`GET /api/health`는 HTTP 서버가 실행 중인지에 더해 PostgreSQL 접속과 `courses`, `favorites`, `history`의 필수 컬럼·SELECT 권한을 검사한다. `LIMIT 0` 조회이므로 데이터가 비어 있어도 정상이며 테이블이나 데이터를 수정하지 않는다.
+
+- 정상: HTTP 200, `{ "success": true, "message": "RWR API Server is running", "timestamp": "ISO 날짜" }`
+- 접속·쿼리·시간 초과 실패: HTTP 503, `{ "success": false, "message": "RWR API Server is not ready" }`
+- 응답에 SQL, DB URL, 비밀번호, 내부 스택을 포함하지 않는다.
+- 검증 전용 연결은 최대 1개이며 연결/대기와 쿼리를 각각 1.5초로 제한한다. 실패한 연결은 폐기한다.
+- 배포 시 즐겨찾기·이력 GET으로 실제 조회 경로도 확인한다. 검증용 UUID를 사용한 읽기 요청이며 사용자나 이력을 생성하지 않는다.
+
+---
+
 _다음 문서: [07. 기술 스택 & 아키텍처](./07-tech-stack.md)_

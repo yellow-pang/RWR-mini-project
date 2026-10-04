@@ -37,6 +37,18 @@ jobs:
       - name: Check server syntax
         run: find server -name '*.js' -not -path '*/node_modules/*' -print0 | xargs -0 -n1 node --check
 
+      - name: Test server health checks
+        run: node --test server/tests/*.test.js
+
+      - name: Test deployment and rollback
+        run: bash scripts/tests/deploy-mac.test.sh
+
+      - name: Test deployment workflow
+        run: ruby scripts/tests/workflow-deploy.test.rb
+
+      - name: Test deployment freshness check
+        run: bash scripts/tests/check-deploy-head.test.sh
+
       - name: Install client dependencies
         run: npm ci --prefix client
 
@@ -106,12 +118,18 @@ jobs:
     name: Deploy published SHA on Mac mini
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: publish
+    timeout-minutes: 25
     runs-on:
       - self-hosted
       - macOS
       - ARM64
       - rwr-production
     environment: production
+    concurrency:
+      group: rwr-production-deploy
+      # 늦게 끝난 이전 빌드가 대기 중인 최신 배포를 취소하지 않도록 모두 대기시킨다.
+      queue: max
+      cancel-in-progress: false
     permissions:
       contents: read
 
@@ -119,14 +137,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Check latest main commit
+        id: deployment_head
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+        run: bash scripts/check-deploy-head.sh "$DEPLOY_SHA"
+
       - name: Deploy published SHA on Mac mini
+        if: steps.deployment_head.outputs.should_deploy == 'true'
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+          RWR_DEPLOY_DIR: ${{ vars.RWR_DEPLOY_DIR }}
+          RWR_ENV_FILE: ${{ vars.RWR_ENV_FILE }}
         run: |
-          test -n "${{ vars.RWR_DEPLOY_DIR }}" && test -n "${{ vars.RWR_ENV_FILE }}" || {
+          test -n "$RWR_DEPLOY_DIR" && test -n "$RWR_ENV_FILE" || {
             echo "RWR_DEPLOY_DIR and RWR_ENV_FILE repository variables are required." >&2
             exit 1
           }
           scripts/deploy-mac.sh \
-            "${{ github.sha }}" \
-            "${{ vars.RWR_DEPLOY_DIR }}" \
+            "$DEPLOY_SHA" \
+            "$RWR_DEPLOY_DIR" \
             "$GITHUB_WORKSPACE" \
-            "${{ vars.RWR_ENV_FILE }}"
+            "$RWR_ENV_FILE"
